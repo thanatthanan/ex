@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>บ้านแสนอุ่นบันทึกการเงิน 🏠 | Family Expense & EV Tracker</title>
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/css/style.css?v=1.0.3">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js CDN สำหรับกราฟวิเคราะห์ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- Navigation Header -->
+  <header>
+    <div class="logo">
+      <i class="fa-solid fa-house-chimney-heart"></i>
+      ex<span>pense</span>
+    </div>
+    <div class="user-profile-header">
+      <div class="user-avatar" id="headerAvatar">👨</div>
+      <div>
+        <div class="user-name" id="headerDisplayName">คุณพ่อ</div>
+        <button class="btn-logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    
+    <!-- 1. Summary Cards Overview -->
+    <div class="summary-grid">
+      <div class="summary-card balance">
+        <div class="icon-box"><i class="fa-solid fa-piggy-bank"></i></div>
+        <div class="details">
+          <h3>เงินคงเหลือบ้านเรา</h3>
+          <p id="totalBalance">0.00 ฿</p>
+        </div>
+      </div>
+      <div class="summary-card income">
+        <div class="icon-box"><i class="fa-solid fa-wallet"></i></div>
+        <div class="details">
+          <h3>รายรับรวมเดือนนี้</h3>
+          <p id="totalIncome">0.00 ฿</p>
+        </div>
+      </div>
+      <div class="summary-card expense">
+        <div class="icon-box"><i class="fa-solid fa-shopping-bag"></i></div>
+        <div class="details">
+          <h3>รายจ่ายรวมเดือนนี้</h3>
+          <p id="totalExpense">0.00 ฿</p>
+        </div>
+      </div>
+      <div class="summary-card ev">
+        <div class="icon-box" style="background-color: var(--ev-bg); color: var(--ev-color);"><i class="fa-solid fa-credit-card"></i></div>
+        <div class="details">
+          <h3>ค้างชำระบัตรเครดิต</h3>
+          <p id="totalCreditOutstanding" style="color: var(--ev-color);">0.00 ฿</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Tabs Switcher -->
+    <div class="tabs">
+      <!-- Desktop Tab -->
+      <button class="tab-btn active desktop-only" onclick="switchTab('transactions-tab')"><i class="fa-solid fa-pen-fancy"></i> บันทึกรายวัน</button>
+      
+      <!-- Mobile Tabs -->
+      <button class="tab-btn active mobile-only" onclick="switchTab('form-tab')"><i class="fa-solid fa-pen-to-square"></i> จดบันทึก</button>
+      <button class="tab-btn mobile-only" onclick="switchTab('list-tab')"><i class="fa-solid fa-list-check"></i> รายการเงิน</button>
+      
+      <!-- Shared Tabs -->
+      <button class="tab-btn" onclick="switchTab('analytics-tab')"><i class="fa-solid fa-chart-pie"></i> กราฟวิเคราะห์</button>
+      <button class="tab-btn" onclick="switchTab('credit-tab')"><i class="fa-solid fa-credit-card"></i> บัตรเครดิต 💳</button>
+      <button class="tab-btn" onclick="switchTab('ev-tab')"><i class="fa-solid fa-car-battery"></i> ชาร์จรถไฟฟ้า ⚡</button>
+    </div>
+
+    <!-- Tab 1: Transactions Page (Desktop only container) -->
+    <div id="transactions-tab" class="tab-content active desktop-only">
+      <div class="dashboard-layout" id="desktopTransactionsContainer">
+        
+        <!-- Left: Transaction Form Card -->
+        <div class="cute-card" id="transactionFormCard">
+          <h2 class="card-title"><i class="fa-solid fa-heart-circle-plus"></i> บันทึกรายการใหม่</h2>
+          
+          <form id="transactionForm" onsubmit="saveTransaction(event)">
+            <!-- ประเภท: รายรับ / รายจ่าย -->
+            <div class="type-selector">
+              <button type="button" class="type-btn active expense" onclick="setTransactionType('expense')">รายจ่าย 💸</button>
+              <button type="button" class="type-btn income" onclick="setTransactionType('income')">รายรับ 💰</button>
+            </div>
+
+            <!-- วันที่ -->
+            <div class="form-group">
+              <label for="transactionDate"><i class="fa-solid fa-calendar-alt"></i> วันที่ทำรายการ</label>
+              <input type="date" id="transactionDate" class="form-control" required>
+            </div>
+
+            <!-- หมวดหมู่หลัก -->
+            <div class="form-group">
+              <label for="mainCategory"><i class="fa-solid fa-folder-open"></i> หมวดหมู่หลัก</label>
+              <select id="mainCategory" class="form-control" onchange="onMainCategoryChange()" required>
+                <!-- จะโหลดข้อมูลโดย JS -->
+              </select>
+            </div>
+
+            <!-- หมวดหมู่ย่อย -->
+            <div class="form-group" id="subCategoryGroup" style="display: none;">
+              <label for="categoryId"><i class="fa-solid fa-tags"></i> หมวดหมู่ย่อย</label>
+              <select id="categoryId" class="form-control" onchange="checkCategoryType(this)">
+                <!-- จะโหลดข้อมูลโดย JS -->
+              </select>
+            </div>
+
+            <!-- เลือกประเภทมื้ออาหาร (จะแสดงเมื่อเลือกหมวดหมู่อาหาร) -->
+            <div class="form-group" id="mealTypeGroup" style="display: none;">
+              <label for="mealType"><i class="fa-solid fa-utensils"></i> มื้ออาหาร</label>
+              <select id="mealType" class="form-control">
+                <option value="เช้า">เช้า 🌅</option>
+                <option value="กลางวัน">กลางวัน ☀️</option>
+                <option value="เย็น">เย็น 🌇</option>
+                <option value="ดึก">ดึก 🌙</option>
+              </select>
+            </div>
+
+            <!-- เลือกผู้ได้รับเงิน (จะแสดงเมื่อเลือกหมวดหมู่ให้ครอบครัว/คนในบ้าน) -->
+            <div class="form-group" id="recipientGroup" style="display: none;">
+              <label for="recipient"><i class="fa-solid fa-people-roof"></i> ให้ใครในครอบครัว</label>
+              <select id="recipient" class="form-control">
+                <option value="ย่า">ย่า 👵</option>
+                <option value="แม่">แม่ 👩</option>
+                <option value="ลูก">ลูก 👦</option>
+                <option value="ญาติ">ญาติ 👥</option>
+              </select>
+            </div>
+
+            <!-- วิธีชำระเงิน (จะซ่อนอัตโนมัติถ้ารายรับ) -->
+            <div class="form-group" id="paymentMethodGroup">
+              <label for="paymentMethod"><i class="fa-solid fa-credit-card"></i> ช่องทางการชำระเงิน</label>
+              <select id="paymentMethod" class="form-control" onchange="toggleCreditCardGroup()">
+                <option value="cash">เงินสด / โอนจ่ายทันที 💵</option>
+                <option value="credit">รูดบัตรเครดิต / ค้างชำระจ่ายเดือนหน้า 💳</option>
+              </select>
+            </div>
+
+            <!-- เลือกบัตรเครดิต (จะซ่อนอัตโนมัติยกเว้นช่องทางการชำระเงินเป็นบัตรเครดิต) -->
+            <div class="form-group" id="creditCardNameGroup" style="display: none;">
+              <label for="creditCardName"><i class="fa-solid fa-credit-card"></i> บัตรเครดิต / แหล่งวงเงิน</label>
+              <select id="creditCardName" class="form-control">
+                <option value="Kbank">Kbank</option>
+                <option value="BBL">BBL</option>
+                <option value="Truepay Next">Truepay Next</option>
+                <option value="Truepay Next Extra">Truepay Next Extra</option>
+                <option value="Lazay Later">Lazay Later</option>
+                <option value="Shopee Pay">Shopee Pay</option>
+              </select>
+            </div>
+
+            <!-- จำนวนเงิน -->
+            <div class="form-group">
+              <label for="amount"><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงิน (บาท)</label>
+              <input type="number" id="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+            </div>
+
+            <!-- คำอธิบายเพิ่มเติม -->
+            <div class="form-group">
+              <label for="description"><i class="fa-solid fa-edit"></i> บันทึกช่วยจำ / รายละเอียด</label>
+              <input type="text" id="description" class="form-control" placeholder="เช่น ค่าข้าวเช้าพ่อ, เงินปันผลกบ...">
+            </div>
+
+            <!-- ส่วนขยายสำหรับ EV Charging (ซ่อนไว้ก่อน เปิดเฉพาะตอนเลือกหมวดหมู่ชาร์จรถ EV) -->
+            <div id="evDetailsSection" class="ev-expandable">
+              <div class="ev-header-toggle">
+                <i class="fa-solid fa-bolt" style="color: var(--ev-color);"></i> รายละเอียดการชาร์จรถ EV (สำหรับคำนวณสถิติ)
+              </div>
+              <div class="ev-grid">
+                <div class="form-group">
+                  <label for="evStationNameSelect">ชื่อสถานีชาร์จ</label>
+                  <select id="evStationNameSelect" class="form-control" onchange="toggleCustomStationInput(); updateEVDescription();">
+                    <option value="PTT">PTT</option>
+                    <option value="EleX">EleX</option>
+                    <option value="PEA">PEA</option>
+                    <option value="SPARK">SPARK</option>
+                    <option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>
+                  </select>
+                  <input type="text" id="evStationNameCustom" class="form-control" placeholder="ระบุชื่อสถานีชาร์จ..." style="display: none; margin-top: 8px;" oninput="updateEVDescription();">
+                </div>
+                <div class="form-group">
+                  <label for="evStationBranch">สาขาของสถานี</label>
+                  <input type="text" id="evStationBranch" class="form-control" placeholder="เช่น วังน้อย, พระราม 9" oninput="updateEVDescription();">
+                </div>
+                <div class="form-group">
+                  <label for="evStationCabinet">เลขตู้ชาร์จ</label>
+                  <input type="text" id="evStationCabinet" class="form-control" placeholder="เช่น 01, A, 04-DC" oninput="updateEVDescription();">
+                </div>
+                <div class="form-group">
+                  <label for="evChargerPower">กำลังไฟหัวชาร์จ (kW)</label>
+                  <input type="number" id="evChargerPower" class="form-control" placeholder="เช่น 120, 150">
+                </div>
+                <div class="form-group">
+                  <label for="evEnergyDelivered">ไฟที่ชาร์จเข้า (kWh)</label>
+                  <input type="number" id="evEnergyDelivered" class="form-control" placeholder="เช่น 45.5" step="0.01">
+                </div>
+                <div class="form-group">
+                  <label for="evOdometer">เลขไมล์รถปัจจุบัน (km)</label>
+                  <input type="number" id="evOdometer" class="form-control" placeholder="เช่น 45000">
+                </div>
+                <div class="form-group">
+                  <label for="evStartBattery">แบตก่อนชาร์จ (%)</label>
+                  <input type="number" id="evStartBattery" class="form-control" placeholder="เช่น 20" min="0" max="100">
+                </div>
+                <div class="form-group">
+                  <label for="evEndBattery">หลังชาร์จ (%)</label>
+                  <input type="number" id="evEndBattery" class="form-control" placeholder="เช่น 80" min="0" max="100">
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-cute">บันทึกรายการเลย! ✨</button>
+          </form>
+        </div>
+
+        <!-- Right Column (Flex layout for multiple cards) -->
+        <div id="transactionListCard" style="display: flex; flex-direction: column; gap: 30px; width: 100%;">
+          
+          <!-- Right: Transaction List Card -->
+          <div class="cute-card">
+            <h2 class="card-title"><i class="fa-solid fa-list-check"></i> รายการเงินบ้านเรา</h2>
+            
+            <!-- แถบเครื่องมือกรองรายการ -->
+            <div class="filter-bar">
+              <div>
+                <i class="fa-solid fa-filter"></i> กรอง:
+              </div>
+              <div>
+                <select id="filterMonth" onchange="fetchTransactions()">
+                  <option value="1">มกราคม</option>
+                  <option value="2">กุมภาพันธ์</option>
+                  <option value="3">มีนาคม</option>
+                  <option value="4">เมษายน</option>
+                  <option value="5">พฤษภาคม</option>
+                  <option value="6">มิถุนายน</option>
+                  <option value="7">กรกฎาคม</option>
+                  <option value="8">สิงหาคม</option>
+                  <option value="9">กันยายน</option>
+                  <option value="10">ตุลาคม</option>
+                  <option value="11">พฤศจิกายน</option>
+                  <option value="12">ธันวาคม</option>
+                </select>
+              </div>
+              <div>
+                <select id="filterYear" onchange="fetchTransactions()">
+                  <!-- เติมปีโดย JS -->
+                </select>
+              </div>
+              <div>
+                <select id="filterUser" onchange="fetchTransactions()">
+                  <!-- ดึงข้อมูลรายบุคคลโดย JS -->
+                </select>
+              </div>
+              <div>
+                <select id="filterPayment" onchange="fetchTransactions()">
+                  <option value="all">วิธีชำระทั้งหมด 📂</option>
+                  <option value="cash">เงินสด / โอนจ่าย 💵</option>
+                  <option value="credit_unpaid">บัตรเครดิตค้างจ่าย 💳</option>
+                  <option value="credit_paid">บัตรเครดิตจ่ายแล้ว ✅</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- แสดงรายการธุรกรรม -->
+            <div id="transactionsList" class="transaction-list">
+              <!-- รายการจะถูกสร้างผ่าน JS -->
+            </div>
+          </div>
+
+
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile-only Tab content containers -->
+    <div id="form-tab" class="tab-content mobile-only">
+      <!-- Form card will be appended here dynamically by JS on mobile -->
+    </div>
+
+    <div id="list-tab" class="tab-content mobile-only">
+      <!-- List column card will be appended here dynamically by JS on mobile -->
+    </div>
+
+    <!-- Tab 2: Analytics Page -->
+    <div id="analytics-tab" class="tab-content">
+      <div class="analytics-grid">
+        <!-- กราฟรายจ่ายตามหมวดหมู่ -->
+        <div class="chart-container">
+          <h2 class="card-title"><i class="fa-solid fa-chart-pie"></i> สัดส่วนรายจ่ายเดือนนี้</h2>
+          <canvas id="categoryChart"></canvas>
+        </div>
+        <!-- เปรียบเทียบ รายรับ VS รายจ่าย -->
+        <div class="chart-container">
+          <h2 class="card-title"><i class="fa-solid fa-chart-bar"></i> รายรับเปรียบเทียบรายจ่าย</h2>
+          <canvas id="comparisonChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 3: EV Charging Page -->
+    <div id="ev-tab" class="tab-content">
+      <!-- EV Stats Grid -->
+      <div class="ev-stats-grid">
+        <div class="ev-stat-card">
+          <h4>ชาร์จไฟรวมทั้งหมด</h4>
+          <p id="evTotalCost">0.00 ฿</p>
+        </div>
+        <div class="ev-stat-card">
+          <h4>ปริมาณไฟฟ้าที่รับรวม</h4>
+          <p id="evTotalKWh">0 kWh</p>
+        </div>
+        <div class="ev-stat-card">
+          <h4>ค่าชาร์จเฉลี่ยต่อหน่วย</h4>
+          <p id="evAvgCostPerKWh">0.00 ฿</p>
+        </div>
+        <div class="ev-stat-card">
+          <h4>เฉลี่ยกิโลเมตรละ (Cost/km)</h4>
+          <p id="evCostPerKm">0.00 ฿</p>
+        </div>
+        <div class="ev-stat-card">
+          <h4>อัตราประหยัดเฉลี่ย</h4>
+          <p id="evAvgEfficiency">0.00 km/kWh</p>
+        </div>
+        <div class="ev-stat-card">
+          <h4>ระยะทางสะสมที่บันทึก</h4>
+          <p id="evTotalDistance">0 km</p>
+        </div>
+      </div>
+
+      <!-- EV Logs Table -->
+      <div class="ev-table-wrapper">
+        <h2 class="card-title"><i class="fa-solid fa-charging-station"></i> ประวัติการชาร์จรถ EV และการสิ้นเปลือง</h2>
+        <table class="ev-table">
+          <thead>
+            <tr>
+              <th>วันที่บันทึก</th>
+              <th>คนบันทึก</th>
+              <th>สถานีชาร์จ</th>
+              <th>หัวชาร์จ (kW)</th>
+              <th>ปริมาณไฟ (kWh)</th>
+              <th>แบต (%)</th>
+              <th>เลขไมล์รถ (km)</th>
+              <th>ค่าชาร์จ (บาท)</th>
+            </tr>
+          </thead>
+          <tbody id="evLogsTableBody">
+            <!-- เติมข้อมูลโดย JS -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Tab 4: Credit Tracker Page -->
+    <div id="credit-tab" class="tab-content">
+      <!-- Credit Tracker Card -->
+      <div class="cute-card" id="creditTrackerCard">
+        <h2 class="card-title"><i class="fa-solid fa-credit-card"></i> บัตรเครดิตค้างชำระ (Credit Tracker)</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+          รายการรูดบัตรค้างจ่ายสะสม (ยอดเงินสดยังไม่ถูกหักจนกว่าจะทำรายการจ่ายบิล)
+        </p>
+
+        <!-- ตัวกรองแยกตามประเภทบัตร -->
+        <div class="credit-filter-bar" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 10px; background-color: var(--bg-color); border-radius: 16px; border: 2px solid var(--border-color);">
+          <button type="button" class="credit-filter-btn active" onclick="setCreditCardFilter('all')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">ทั้งหมด 📂</button>
+          <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Kbank')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Kbank</button>
+          <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('BBL')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">BBL</button>
+          <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Truepay Next')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Truepay Next</button>
+          <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Truepay Next Extra')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Truepay Next Extra</button>
+          <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Lazay Later')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Lazay Later</button>
+          <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Shopee Pay')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: #FFF; font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Shopee Pay</button>
+        </div>
+        <div id="unpaidCreditList" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding-right: 5px;">
+          <!-- โหลดโดย JS -->
+        </div>
+
+        <!-- แสดงยอดค้างชำระรวม -->
+        <div style="display: flex; justify-content: space-between; font-weight: 500; font-size: 0.9rem; margin-bottom: 15px; border-top: 2px solid var(--border-color); padding-top: 10px;">
+          <span>ยอดค้างชำระรวมทั้งหมด:</span>
+          <span id="totalUnpaidCredit" style="color: var(--expense-color); font-weight: 600;">0.00 ฿</span>
+        </div>
+        
+        <div id="creditActionArea" style="display: none; border-top: 2px dashed var(--border-color); padding-top: 15px;">
+          <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 500; margin-bottom: 12px;">
+            <span>ยอดที่เลือกชำระ:</span>
+            <span id="selectedCreditAmount" style="color: var(--income-color); font-weight: 600;">0.00 ฿</span>
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label for="creditPayDate" style="font-size: 0.85rem; font-weight: 500;"><i class="fa-solid fa-calendar-check"></i> วันที่ชำระบิลบัตรเครดิต (หักเงินสด)</label>
+            <input type="date" id="creditPayDate" class="form-control" style="padding: 8px 12px; font-size: 0.85rem;">
+          </div>
+          <button type="button" class="btn-cute" onclick="payCreditTransactions()" style="padding: 10px; font-size: 0.95rem; background-color: var(--income-color); box-shadow: 0 4px 0px #4FA5A4; margin-top: 5px;">
+            ชำระยอดที่เลือก 💸 (หักเงินสดจริงเดือนนี้)
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>พัฒนาด้วยความรัก 💖 สำหรับสมาชิกในครอบครัวและรถ EV ของเรา | ปี 2026</p>
+  </footer>
+
+  <!-- JS Logic -->
+  <script src="/js/app.js?v=1.0.3"></script>
+</body>
+</html>

@@ -1,0 +1,1066 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Mitr:wght@300;400;500&display=swap');
+
+:root {
+  --bg-color: #FAF7F2;
+  --card-bg: #FFFFFF;
+  --text-color: #4A3E3D;
+  --text-muted: #8E7C77;
+  --border-color: #F3ECE3;
+  --primary-color: #FFB5B5; /* Soft Peach Pink */
+  --primary-hover: #FFA2A2;
+  --secondary-color: #B5EAD7; /* Mint Green */
+  --income-color: #61C0BF; /* Soft Teal */
+  --income-bg: #EAF9F9;
+  --expense-color: #FF8B94; /* Pastel Coral Red */
+  --expense-bg: #FFEBEB;
+  --ev-color: #79A3B1; /* Pastel Blue */
+  --ev-bg: #E8F1F5;
+  --font-main: 'Kanit', sans-serif;
+  --font-title: 'Mitr', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: all 0.25s ease-in-out;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar สไตล์กลมน่ารัก */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background: #E0D7CD;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C4B9AA;
+}
+
+/* Header & Navigation */
+header {
+  background-color: var(--card-bg);
+  border-bottom: 3px solid var(--border-color);
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(142, 124, 119, 0.05);
+}
+
+.logo {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--expense-color);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo span {
+  color: var(--income-color);
+}
+
+.user-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-avatar {
+  font-size: 1.8rem;
+  background-color: var(--border-color);
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--primary-color);
+}
+
+.user-name {
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.btn-logout {
+  background-color: transparent;
+  border: 2px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-main);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.btn-logout:hover {
+  background-color: var(--expense-bg);
+  color: var(--expense-color);
+  border-color: var(--expense-color);
+}
+
+/* Main Layout */
+.container {
+  max-width: 1200px;
+  margin: 30px auto;
+  padding: 0 20px;
+  width: 100%;
+  flex-grow: 1;
+}
+
+/* Dashboard Summary Cards */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.summary-card {
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 8px 0px var(--border-color);
+  transform: translateY(0);
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 0px var(--border-color);
+}
+
+.summary-card .icon-box {
+  width: 60px;
+  height: 60px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.summary-card.balance .icon-box {
+  background-color: #FFF2E2;
+  color: #E29734;
+}
+
+.summary-card.income .icon-box {
+  background-color: var(--income-bg);
+  color: var(--income-color);
+}
+
+.summary-card.expense .icon-box {
+  background-color: var(--expense-bg);
+  color: var(--expense-color);
+}
+
+.summary-card.ev .icon-box {
+  background-color: var(--ev-bg);
+  color: var(--ev-color);
+}
+
+.summary-card .details h3 {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.summary-card .details p {
+  font-family: var(--font-title);
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+/* Tabs Navigation */
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 25px;
+  border-bottom: 3px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 15px;
+}
+
+.tab-btn.active {
+  color: var(--text-color);
+  background-color: var(--border-color);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* Layout Split: Form & List */
+.dashboard-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 1.9fr;
+  gap: 30px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Cute Form Styles */
+.cute-card {
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 28px;
+  padding: 25px;
+  box-shadow: 0 8px 0px var(--border-color);
+}
+
+.card-title {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-color);
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: var(--text-color);
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  font-family: var(--font-main);
+  font-size: 0.95rem;
+  color: var(--text-color);
+  background-color: #FCFAF7;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  background-color: #FFFFFF;
+}
+
+/* Type Selector Buttons (Income/Expense toggle) */
+.type-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.type-btn {
+  flex: 1;
+  padding: 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #FFFFFF;
+  text-align: center;
+}
+
+.type-btn.active.income {
+  background-color: var(--income-bg);
+  border-color: var(--income-color);
+  color: var(--income-color);
+}
+
+.type-btn.active.expense {
+  background-color: var(--expense-bg);
+  border-color: var(--expense-color);
+  color: var(--expense-color);
+}
+
+/* EV Details Expandable Section */
+.ev-expandable {
+  background-color: #F8F9FA;
+  border: 2px dashed #D2D7DF;
+  border-radius: 18px;
+  padding: 18px;
+  margin-top: 15px;
+  display: none;
+}
+
+.ev-expandable.show {
+  display: block;
+}
+
+.ev-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ev-header-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* Cute Buttons */
+.btn-cute {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 18px;
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: var(--primary-color);
+  color: #FFFFFF;
+  box-shadow: 0 4px 0px #E59F9F;
+  margin-top: 10px;
+}
+
+.btn-cute:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(2px);
+  box-shadow: 0 2px 0px #E59F9F;
+}
+
+.btn-cute:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+/* Filter Section */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+  background-color: var(--card-bg);
+  padding: 12px 20px;
+  border-radius: 20px;
+  border: 3px solid var(--border-color);
+}
+
+.filter-bar select, .filter-bar input {
+  padding: 8px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  font-family: var(--font-main);
+  background-color: #FCFAF7;
+}
+
+/* Transaction List */
+.transaction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.transaction-item {
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 20px;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 0px var(--border-color);
+}
+
+.transaction-item:hover {
+  transform: scale(1.01);
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.item-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  color: #FFFFFF;
+  flex-shrink: 0;
+}
+
+.item-details h4 {
+  font-family: var(--font-title);
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.item-details p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.item-badge-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  background-color: var(--border-color);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 4px;
+}
+
+.item-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.item-amount {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.item-amount.income {
+  color: var(--income-color);
+}
+
+.item-amount.expense {
+  color: var(--expense-color);
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 5px;
+}
+
+.btn-delete:hover {
+  color: var(--expense-color);
+  transform: scale(1.2);
+}
+
+/* EV Badge on Transactions */
+.ev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--ev-bg);
+  color: var(--ev-color);
+  border: 1px solid var(--ev-color);
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 5px;
+}
+
+/* Analytics Tab & EV Tab Grid Layouts */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 30px;
+}
+
+@media (max-width: 800px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-container {
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 28px;
+  padding: 25px;
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 0px var(--border-color);
+  position: relative;
+}
+
+.chart-container canvas {
+  max-height: 280px;
+  width: 100% !important;
+}
+
+/* EV Statistics Details Grid */
+.ev-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.ev-stat-card {
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 20px;
+  padding: 15px;
+  text-align: center;
+  box-shadow: 0 4px 0px var(--border-color);
+}
+
+.ev-stat-card h4 {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.ev-stat-card p {
+  font-family: var(--font-title);
+  font-size: 1.3rem;
+  color: var(--ev-color);
+}
+
+/* EV Table/Log style */
+.ev-table-wrapper {
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 24px;
+  padding: 20px;
+  overflow-x: auto;
+  box-shadow: 0 6px 0px var(--border-color);
+}
+
+.ev-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.ev-table th, .ev-table td {
+  padding: 12px 15px;
+  border-bottom: 2px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.ev-table th {
+  font-family: var(--font-title);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.ev-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Login Page Styling */
+.login-body {
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-color);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 30px;
+  border-radius: 32px;
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  box-shadow: 0 12px 0px var(--border-color);
+  text-align: center;
+}
+
+.login-logo {
+  font-family: var(--font-title);
+  font-size: 2.2rem;
+  color: var(--expense-color);
+  margin-bottom: 10px;
+}
+
+.login-logo span {
+  color: var(--income-color);
+}
+
+.login-subtitle {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 30px;
+}
+
+.family-selection {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 25px;
+}
+
+.family-member {
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  text-align: center;
+}
+
+.family-member.selected {
+  border-color: var(--primary-color);
+  background-color: var(--bg-color);
+}
+
+.family-member .avatar-large {
+  font-size: 2.8rem;
+  margin-bottom: 5px;
+}
+
+.family-member .member-name {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 40px;
+  border-top: 2px solid var(--border-color);
+}
+
+/* Desktop/Mobile Only Visibility Utility Classes */
+.mobile-only {
+  display: none !important;
+}
+.desktop-only {
+  display: block !important;
+}
+/* Tab content ที่มี desktop-only ต้องซ่อนก่อน และแสดงเฉพาะตอน active */
+.tab-content.desktop-only {
+  display: none !important;
+}
+.tab-content.desktop-only.active {
+  display: block !important;
+}
+
+/* ==========================================
+   Responsive Styles for Mobile Screen (max-width: 600px)
+   ========================================== */
+@media (max-width: 600px) {
+  .mobile-only {
+    display: inline-block !important;
+  }
+  div.mobile-only {
+    display: block !important;
+  }
+  .desktop-only {
+    display: none !important;
+  }
+  .tab-content.mobile-only {
+    display: none !important;
+  }
+  .tab-content.mobile-only.active {
+    display: block !important;
+  }
+  header {
+    padding: 10px 15px;
+  }
+  
+  .logo {
+    font-size: 1.25rem;
+  }
+
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1.4rem;
+    border-width: 1.5px;
+  }
+
+  .user-name {
+    font-size: 0.8rem;
+  }
+
+  .btn-logout {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+  }
+
+  .container {
+    margin: 15px auto;
+    padding: 0 12px;
+  }
+
+  /* ปรับการ์ดสรุปยอดเป็น 2 คอลัมน์บนมือถือ */
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .summary-card {
+    padding: 12px;
+    gap: 10px;
+    border-radius: 18px;
+    box-shadow: 0 4px 0px var(--border-color);
+  }
+
+  .summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 0px var(--border-color);
+  }
+
+  .summary-card .icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 1.25rem;
+  }
+
+  .summary-card .details h3 {
+    font-size: 0.7rem;
+  }
+
+  .summary-card .details p {
+    font-size: 1.05rem;
+  }
+
+  /* ปรับแถบ Tabs ให้สามารถเลื่อนในแนวนอนได้หากจอล้น */
+  .tabs {
+    gap: 5px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 5px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tabs::-webkit-scrollbar {
+    display: none; /* ซ่อน scrollbar สำหรับมือถือเพื่อให้ดูสะอาดตา */
+  }
+
+  .tab-btn {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .cute-card {
+    padding: 18px;
+    border-radius: 20px;
+    box-shadow: 0 5px 0px var(--border-color);
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-control {
+    padding: 10px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+
+  .type-btn {
+    padding: 10px;
+    font-size: 0.9rem;
+    border-radius: 12px;
+  }
+
+  /* ปรับแถบเครื่องมือกองข้อมูลให้ยืดหยุ่น */
+  .filter-bar {
+    padding: 10px 15px;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .filter-bar select, .filter-bar input {
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    border-radius: 10px;
+    flex-grow: 1;
+  }
+
+  /* ปรับขนาดรายการเงิน */
+  .transaction-item {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+    gap: 10px;
+    border-radius: 18px;
+    box-shadow: 0 4px 0px var(--border-color);
+  }
+
+  .item-left {
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .item-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 1.25rem;
+    margin-top: 2px;
+  }
+
+  .item-details {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .item-details h4 {
+    font-size: 0.95rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    line-height: 1.3;
+  }
+
+  .ev-badge {
+    margin-left: 0;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+  }
+
+  .item-details p {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .item-badge-user {
+    align-self: flex-start;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    margin-top: 2px;
+  }
+
+  .item-right {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    border-top: 2px dashed var(--border-color);
+    padding-top: 10px;
+    margin-top: 4px;
+  }
+
+  .item-amount {
+    margin-right: auto;
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  .item-right .btn-delete {
+    padding: 8px 12px;
+    font-size: 1.15rem;
+  }
+
+  .item-right .btn-delete[onclick*="startEditTransaction"] {
+    margin-right: 12px !important;
+  }
+
+  .chart-container {
+    padding: 15px;
+    min-height: 280px;
+    border-radius: 20px;
+  }
+
+  /* การ์ดสถิติ EV ชาร์จรถ */
+  .ev-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .ev-stat-card {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .ev-stat-card h4 {
+    font-size: 0.7rem;
+  }
+
+  .ev-stat-card p {
+    font-size: 1.1rem;
+  }
+
+  /* ตารางประวัติชาร์จ EV */
+  .ev-table-wrapper {
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .ev-table, .ev-table thead, .ev-table tbody, .ev-table th, .ev-table td, .ev-table tr {
+    display: block;
+  }
+
+  .ev-table thead {
+    display: none;
+  }
+
+  .ev-table tr {
+    background-color: var(--card-bg);
+    border: 3px solid var(--border-color);
+    border-radius: 20px;
+    padding: 14px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 0px var(--border-color);
+  }
+
+  .ev-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1.5px dashed var(--border-color);
+    font-size: 0.85rem;
+    text-align: right;
+  }
+
+  .ev-table td:last-child {
+    border-bottom: none;
+  }
+
+  .ev-table td::before {
+    content: attr(data-label);
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-right: 15px;
+    text-align: left;
+  }
+
+  .ev-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  /* หน้าล็อกอินบนมือถือ */
+  .login-card {
+    margin: 15px;
+    padding: 25px 20px;
+    border-radius: 24px;
+    box-shadow: 0 8px 0px var(--border-color);
+  }
+
+  .login-logo {
+    font-size: 1.8rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+
+  .family-member .avatar-large {
+    font-size: 2.2rem;
+  }
+
+  .family-member .member-name {
+    font-size: 0.75rem;
+  }
+}
+
+/* ==========================================
+   Responsive Styles for Small Mobile Screen (max-width: 400px)
+   ========================================== */
+@media (max-width: 400px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .summary-card {
+    padding: 10px;
+    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .summary-card .icon-box {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .summary-card .details p {
+    font-size: 0.95rem;
+  }
+}
+
+/* Credit Tab filter buttons */
+.credit-filter-btn.active {
+  background-color: var(--ev-color) !important;
+  color: #FFFFFF !important;
+  border-color: var(--ev-color) !important;
+  font-weight: 500;
+  box-shadow: 0 4px 10px rgba(121, 163, 177, 0.2);
+}
+

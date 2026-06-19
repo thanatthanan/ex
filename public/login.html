@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เข้าสู่ระบบครอบครัวอบอุ่น 🏠 | Family Account</title>
+  <!-- CSS Styles -->
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="stylesheet" href="/css/style.css?v=1.0.2">
+  <!-- FontAwesome & Font -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="login-body">
+
+  <div class="login-card">
+    <div class="login-logo">
+      <i class="fa-solid fa-house-chimney-heart"></i>
+      ex<span>pense</span>
+    </div>
+    <p class="login-subtitle">ลงบันทึกรายรับ-รายจ่ายของครอบครัวเรา 🌸</p>
+
+    <!-- สำหรับเลือกสมาชิกครอบครัวแบบด่วน -->
+    <div class="family-selection">
+      <div class="family-member" onclick="selectMember('dad', 'คุณพ่อ 👨')">
+        <div class="avatar-large">👨</div>
+        <div class="member-name">คุณพ่อ</div>
+      </div>
+      <div class="family-member" onclick="selectMember('mom', 'คุณแม่ 👩')">
+        <div class="avatar-large">👩</div>
+        <div class="member-name">คุณแม่</div>
+      </div>
+      <div class="family-member" onclick="selectMember('kid', 'ลูกชาย 👦')">
+        <div class="avatar-large">👦</div>
+        <div class="member-name">ลูกชาย</div>
+      </div>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group" style="text-align: left;">
+        <label for="username"><i class="fa-solid fa-user"></i> ชื่อผู้ใช้ (Username)</label>
+        <input type="text" id="username" class="form-control" placeholder="เลือกสมาชิกด้านบน หรือพิมพ์ชื่อ..." required>
+      </div>
+
+      <div class="form-group" style="text-align: left;">
+        <label for="password"><i class="fa-solid fa-key"></i> รหัสผ่าน (Password)</label>
+        <input type="password" id="password" class="form-control" placeholder="กรอกรหัสผ่าน (เริ่มต้น 1234)..." required>
+      </div>
+
+      <div id="loginError" style="color: var(--expense-color); font-size: 0.85rem; margin-bottom: 15px; display: none;"></div>
+
+      <button type="submit" class="btn-cute">เข้าบ้านกันเถอะ! 🏠</button>
+    </form>
+  </div>
+
+  <script>
+    // เลือกสมาชิกครอบครัวด่วน
+    function selectMember(username, displayName) {
+      document.getElementById('username').value = username;
+      // ลบสไตล์การเลือกเดิมออก
+      document.querySelectorAll('.family-member').forEach(el => el.classList.remove('selected'));
+      // เพิ่มคลาส selected ให้กับตัวที่เลือก
+      event.currentTarget.classList.add('selected');
+      // โฟกัสไปที่ฟิลด์รหัสผ่านทันที
+      document.getElementById('password').focus();
+    }
+
+    // จัดการการล็อกอิน
+    async function handleLogin(event) {
+      event.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorDiv = document.getElementById('loginError');
+
+      errorDiv.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // รีไดเรกต์ไปที่หน้าหลัก
+          window.location.href = '/';
+        } else {
+          errorDiv.textContent = data.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+          errorDiv.style.display = 'block';
+        }
+      } catch (error) {
+        errorDiv.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    // ตรวจเช็คว่ามีเซสชันอยู่แล้วหรือไม่
+    window.onload = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = '/';
+        }
+      } catch (e) {
+        // ทำงานต่อปกติ
+      }
+    }
+  </script>
+</body>
+</html>
