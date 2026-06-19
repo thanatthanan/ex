@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session สำหรับเก็บสถานะ Login (อายุเซสชัน 1 วัน)
 app.use(session({
-  secret: 'cute-family-secret-key-1234',
+  secret: process.env.SESSION_SECRET || 'fallback-secret-please-change-in-env',
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 ชั่วโมง
