@@ -6,6 +6,7 @@ const db = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const BASE = process.env.BASE_PATH || ''; // เช่น '/ex' สำหรับ subdirectory
 
 // Middleware สำหรับจัดการ JSON และ Form-encoded data
 app.use(express.json());
@@ -20,7 +21,7 @@ app.use(session({
 }));
 
 // เสิร์ฟไฟล์สแตติกจากโฟลเดอร์ public
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(BASE, express.static(path.join(__dirname, 'public')));
 
 // เช็คว่าเชื่อมต่อฐานข้อมูลได้ไหม และช่วยสร้างตาราง/ข้อมูลตัวอย่างให้อัตโนมัติ (Auto-seeding)
 async function initializeDatabase() {
@@ -156,21 +157,26 @@ const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const evRoutes = require('./routes/ev');
 
-app.use('/api/auth', authRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/ev', evRoutes);
+app.use(`${BASE}/api/auth`, authRoutes);
+app.use(`${BASE}/api/transactions`, transactionRoutes);
+app.use(`${BASE}/api/ev`, evRoutes);
 
 // เสิร์ฟหน้า login.html และ index.html ตามสิทธิ์การใช้งาน
-app.get('/login', (req, res) => {
+app.get(`${BASE}/login`, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.get('/', (req, res) => {
+app.get(`${BASE}/`, (req, res) => {
   if (!req.session.userId) {
-    return res.redirect('/login');
+    return res.redirect(`${BASE}/login`);
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Redirect root ไปยัง BASE_PATH (กรณีเข้า / แต่ app อยู่ที่ /ex)
+if (BASE) {
+  app.get('/', (req, res) => res.redirect(`${BASE}/`));
+}
 
 // เริ่มต้น Server
 app.listen(PORT, () => {
