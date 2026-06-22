@@ -2,10 +2,11 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-require('dotenv').config(); // โหลด .env file
+require('dotenv').config({ path: path.join(__dirname, '.env') }); // โหลด .env file
 const db = require('./config/database');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 
 // Middleware สำหรับจัดการกับ Subdirectory /exapp บน Production
@@ -49,10 +50,29 @@ async function initializeDatabase() {
         \`username\` VARCHAR(50) NOT NULL UNIQUE,
         \`password\` VARCHAR(255) NOT NULL,
         \`display_name\` VARCHAR(100) NOT NULL,
-        \`avatar\` VARCHAR(50) DEFAULT 'default',
+        \`avatar\` VARCHAR(255) DEFAULT 'default',
         \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
+
+    // ตรวจสอบและขยายคอลัมน์ avatar เป็น VARCHAR(255) เพื่อรองรับ URL ยาวจาก LINE
+    try {
+      await db.query("ALTER TABLE `users` MODIFY COLUMN `avatar` VARCHAR(255) DEFAULT 'default'");
+      console.log("✅ ปรับปรุงคอลัมน์ avatar เป็น VARCHAR(255) สำเร็จ!");
+    } catch (e) {
+      console.error("❌ ไม่สามารถปรับปรุงขนาดคอลัมน์ avatar ได้:", e.message);
+    }
+
+    // ตรวจสอบและสร้างคอลัมน์ line_id
+    try {
+      const [columns] = await db.query("SHOW COLUMNS FROM `users` LIKE 'line_id'");
+      if (columns.length === 0) {
+        await db.query("ALTER TABLE `users` ADD COLUMN `line_id` VARCHAR(255) UNIQUE DEFAULT NULL");
+        console.log("✅ เพิ่มคอลัมน์ line_id ในตาราง users สำเร็จ!");
+      }
+    } catch (e) {
+      console.error("❌ ไม่สามารถตรวจสอบหรือเพิ่มคอลัมน์ line_id ได้:", e.message);
+    }
 
     // 3. สร้างตารางหมวดหมู่
     await db.query(`

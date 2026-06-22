@@ -383,6 +383,42 @@ header {
   box-shadow: none;
 }
 
+/* LINE Login Button */
+.btn-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 18px;
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #06C755;
+  color: #FFFFFF;
+  box-shadow: 0 4px 0px #049F43;
+  margin-top: 15px;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: background-color 0.2s, transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-line:hover {
+  background-color: #05B04B;
+  transform: translateY(2px);
+  box-shadow: 0 2px 0px #049F43;
+  color: #FFFFFF;
+}
+
+.btn-line:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+
 /* Filter Section */
 .filter-bar {
   display: flex;
@@ -1063,4 +1099,67 @@ footer {
   font-weight: 500;
   box-shadow: 0 4px 10px rgba(121, 163, 177, 0.2);
 }
+
+/* Modal Styling */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 2000; /* ให้อยู่หน้าสุด */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background-color: #FFFFFF;
+  padding: 30px;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+  position: relative;
+  font-family: var(--font-body);
+  border: 4px solid var(--border-color);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.close-btn {
+  position: absolute;
+  right: 20px;
+  top: 15px;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: var(--expense-color);
+}
+
+.modal-title {
+  font-family: var(--font-title);
+  color: var(--primary-color);
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
 

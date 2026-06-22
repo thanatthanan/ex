@@ -56,7 +56,11 @@ async function checkAuth() {
     const data = await res.json();
     if (data.success) {
       currentUser = data.user;
-      document.getElementById('headerAvatar').textContent = avatarMap[currentUser.avatar] || '🏠';
+      if (currentUser.avatar && (currentUser.avatar.startsWith('http://') || currentUser.avatar.startsWith('https://'))) {
+        document.getElementById('headerAvatar').innerHTML = `<img src="${currentUser.avatar}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;" alt="Avatar">`;
+      } else {
+        document.getElementById('headerAvatar').textContent = avatarMap[currentUser.avatar] || '🏠';
+      }
       document.getElementById('headerDisplayName').textContent = currentUser.displayName;
       return true;
     } else {
@@ -131,7 +135,10 @@ async function fetchFamilyMembers() {
       data.users.forEach(user => {
         const option = document.createElement('option');
         option.value = user.id;
-        option.textContent = `${avatarMap[user.avatar] || '👤'} ${user.display_name}`;
+        const avatarEmoji = (user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://'))) 
+          ? '🖼️' 
+          : (avatarMap[user.avatar] || '👤');
+        option.textContent = `${avatarEmoji} ${user.display_name}`;
         userFilter.appendChild(option);
       });
       // ตั้งค่าเริ่มต้นของตัวกรองให้ตรงกับผู้ใช้งานที่ล็อกอินอยู่
@@ -442,7 +449,7 @@ function renderTransactions(transactions) {
           </h4>
           <p>${formattedDate} • ${t.description || 'ไม่มีคำอธิบาย'}</p>
           <div class="item-badge-user">
-            <span>${avatarMap[t.avatar] || '👤'}</span>
+            <span>${t.avatar && (t.avatar.startsWith('http://') || t.avatar.startsWith('https://')) ? `<img src="${t.avatar}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 4px;" alt="avatar">` : (avatarMap[t.avatar] || '👤')}</span>
             <span>${t.display_name}</span>
           </div>
         </div>
@@ -1267,3 +1274,69 @@ function handleResponsiveLayout() {
     }
   }
 }
+
+// ==========================================
+// Change Password Modal & API interaction
+// ==========================================
+
+// ฟังก์ชันเปิด Modal เปลี่ยนรหัสผ่าน
+function openChangePasswordModal() {
+  document.getElementById('changePasswordModal').style.display = 'flex';
+  document.getElementById('changePasswordForm').reset();
+  document.getElementById('changePasswordError').style.display = 'none';
+  document.getElementById('changePasswordSuccess').style.display = 'none';
+}
+
+// ฟังก์ชันปิด Modal เปลี่ยนรหัสผ่าน
+function closeChangePasswordModal() {
+  document.getElementById('changePasswordModal').style.display = 'none';
+}
+
+// ฟังก์ชันส่งฟอร์มเปลี่ยนรหัสผ่าน
+async function handleChangePassword(event) {
+  event.preventDefault();
+  const oldPassword = document.getElementById('oldPassword').value;
+  const newPassword = document.getElementById('newPassword').value;
+  const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+  const errorDiv = document.getElementById('changePasswordError');
+  const successDiv = document.getElementById('changePasswordSuccess');
+
+  errorDiv.style.display = 'none';
+  successDiv.style.display = 'none';
+
+  if (newPassword !== confirmNewPassword) {
+    errorDiv.textContent = 'รหัสผ่านใหม่ไม่ตรงกันจ้า กรุณากรอกใหม่อีกครั้ง';
+    errorDiv.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch(basePath + '/api/auth/change-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ oldPassword, newPassword })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      successDiv.textContent = data.message;
+      successDiv.style.display = 'block';
+      document.getElementById('changePasswordForm').reset();
+      
+      // ปิด modal อัตโนมัติหลังจากเปลี่ยนรหัสผ่านสำเร็จ 1.5 วินาที
+      setTimeout(() => {
+        closeChangePasswordModal();
+      }, 1500);
+    } else {
+      errorDiv.textContent = data.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ';
+      errorDiv.style.display = 'block';
+    }
+  } catch (error) {
+    console.error('Change password error:', error);
+    errorDiv.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+    errorDiv.style.display = 'block';
+  }
+}
+

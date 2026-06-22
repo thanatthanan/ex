@@ -22,7 +22,10 @@
       <div class="user-avatar" id="headerAvatar">👨</div>
       <div>
         <div class="user-name" id="headerDisplayName">คุณพ่อ</div>
-        <button class="btn-logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button class="btn-logout" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> เปลี่ยนรหัส</button>
+          <button class="btn-logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+        </div>
       </div>
     </div>
   </header>
@@ -405,6 +408,31 @@
       </div>
     </div>
 
+  </div>
+
+  <!-- Modal สำหรับเปลี่ยนรหัสผ่าน -->
+  <div id="changePasswordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeChangePasswordModal()">&times;</span>
+      <h2 class="modal-title"><i class="fa-solid fa-key"></i> เปลี่ยนรหัสผ่านส่วนตัว 🌸</h2>
+      <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+        <div class="form-group" style="text-align: left;">
+          <label for="oldPassword"><i class="fa-solid fa-lock"></i> รหัสผ่านเดิม (Old Password)</label>
+          <input type="password" id="oldPassword" class="form-control" placeholder="กรอกรหัสผ่านเดิม..." required>
+        </div>
+        <div class="form-group" style="text-align: left; margin-top: 15px;">
+          <label for="newPassword"><i class="fa-solid fa-key"></i> รหัสผ่านใหม่ (New Password)</label>
+          <input type="password" id="newPassword" class="form-control" placeholder="กรอกรหัสผ่านใหม่..." required>
+        </div>
+        <div class="form-group" style="text-align: left; margin-top: 15px;">
+          <label for="confirmNewPassword"><i class="fa-solid fa-check-double"></i> ยืนยันรหัสผ่านใหม่ (Confirm Password)</label>
+          <input type="password" id="confirmNewPassword" class="form-control" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง..." required>
+        </div>
+        <div id="changePasswordError" style="color: var(--expense-color); font-size: 0.85rem; margin-top: 10px; display: none;"></div>
+        <div id="changePasswordSuccess" style="color: #2E7D32; font-size: 0.85rem; margin-top: 10px; display: none;"></div>
+        <button type="submit" class="btn-cute" style="margin-top: 20px;">บันทึกรหัสผ่านใหม่ ✨</button>
+      </form>
+    </div>
   </div>
 
   <!-- Footer -->

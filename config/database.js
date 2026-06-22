@@ -1,5 +1,6 @@
 const mysql = require('mysql2');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 // ตั้งค่าพูลการเชื่อมต่อ MySQL (Connection Pool)
 // โดยดึงค่าจาก Environment Variables หรือใช้ค่า Default สำหรับ XAMPP
@@ -11,7 +12,9 @@ const pool = mysql.createPool({
   charset: 'utf8mb4',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 10000
 });
 
 // แปลงเป็น Promise wrapper เพื่อความง่ายในการใช้ async/await
