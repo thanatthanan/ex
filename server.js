@@ -108,6 +108,35 @@ async function initializeDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // ตรวจสอบและเพิ่มคอลัมน์ที่อาจจะยังไม่มีในตาราง transactions (กรณีฐานข้อมูลเดิมสร้างไว้ก่อนเพิ่มฟีเจอร์)
+    try {
+      const [cols] = await db.query("SHOW COLUMNS FROM `transactions`");
+      const colNames = cols.map(c => c.Field);
+      
+      if (!colNames.includes('payment_method')) {
+        await db.query("ALTER TABLE `transactions` ADD COLUMN `payment_method` VARCHAR(20) DEFAULT 'cash'");
+        console.log("✅ เพิ่มคอลัมน์ payment_method ในตาราง transactions สำเร็จ!");
+      }
+      if (!colNames.includes('credit_status')) {
+        await db.query("ALTER TABLE `transactions` ADD COLUMN `credit_status` VARCHAR(20) DEFAULT 'none'");
+        console.log("✅ เพิ่มคอลัมน์ credit_status ในตาราง transactions สำเร็จ!");
+      }
+      if (!colNames.includes('credit_card_name')) {
+        await db.query("ALTER TABLE `transactions` ADD COLUMN `credit_card_name` VARCHAR(50) DEFAULT NULL");
+        console.log("✅ เพิ่มคอลัมน์ credit_card_name ในตาราง transactions สำเร็จ!");
+      }
+      if (!colNames.includes('meal_type')) {
+        await db.query("ALTER TABLE `transactions` ADD COLUMN `meal_type` VARCHAR(20) DEFAULT NULL");
+        console.log("✅ เพิ่มคอลัมน์ meal_type ในตาราง transactions สำเร็จ!");
+      }
+      if (!colNames.includes('recipient')) {
+        await db.query("ALTER TABLE `transactions` ADD COLUMN `recipient` VARCHAR(50) DEFAULT NULL");
+        console.log("✅ เพิ่มคอลัมน์ recipient ในตาราง transactions สำเร็จ!");
+      }
+    } catch (e) {
+      console.error("❌ ไม่สามารถตรวจสอบหรือเพิ่มคอลัมน์ในตาราง transactions ได้:", e.message);
+    }
+
     // 5. สร้างตาราง EV Logs
     await db.query(`
       CREATE TABLE IF NOT EXISTS \`ev_logs\` (
