@@ -137,16 +137,16 @@ async function initializeDatabase() {
 
       await db.query(`
         INSERT INTO users (username, password, display_name, avatar) VALUES
-        ('dad', ?, 'คุณพ่อ 👨', 'dad'),
-        ('mom', ?, 'คุณแม่ 👩', 'mom'),
-        ('kid', ?, 'ลูกชาย 👦', 'kid')
+        ('dad', ?, 0xe0b884e0b8b8e0b893e0b89ee0b988e0b8ad20f09f91a8, 'dad'),
+        ('mom', ?, 0xe0b884e0b8b8e0b893e0b981e0b8a1e0b98820f09f91a9, 'mom'),
+        ('kid', ?, 0xe0b8a5e0b8b9e0b881e0b88ae0b8b2e0b8a220f09f91a6, 'kid')
       `, [hashedPassword, hashedPassword, hashedPassword]);
       console.log('✅ สร้างผู้ใช้เริ่มต้นสำเร็จ (รหัสผ่านเริ่มต้นคือ "1234")');
     } else {
       // บังคับแก้ไขชื่อหลักให้มีอีโมจิที่ถูกต้อง เผื่อกรณีที่ข้อมูลค้างเก่าไม่ถูกเคลียร์
-      await db.query("UPDATE users SET display_name = 'คุณพ่อ 👨' WHERE username = 'dad'");
-      await db.query("UPDATE users SET display_name = 'คุณแม่ 👩' WHERE username = 'mom'");
-      await db.query("UPDATE users SET display_name = 'ลูกชาย 👦' WHERE username = 'kid'");
+      await db.query("UPDATE users SET display_name = 0xe0b884e0b8b8e0b893e0b89ee0b988e0b8ad20f09f91a8 WHERE username = 'dad'");
+      await db.query("UPDATE users SET display_name = 0xe0b884e0b8b8e0b893e0b981e0b8a1e0b98820f09f91a9 WHERE username = 'mom'");
+      await db.query("UPDATE users SET display_name = 0xe0b8a5e0b8b9e0b881e0b88ae0b8b2e0b8a220f09f91a6 WHERE username = 'kid'");
     }
 
     // 7. เพิ่มหมวดหมู่เริ่มต้นหากยังไม่มี
@@ -183,22 +183,22 @@ async function initializeDatabase() {
       console.log('✅ สร้างหมวดหมู่เริ่มต้นสำเร็จ');
     } else {
       // บังคับแก้ไขชื่อหมวดหมู่และหมวดหมู่หลักที่มีอีโมจิให้ถูกต้อง เผื่อกรณีข้อมูลเก่าเพี้ยน
-      await db.query("UPDATE categories SET name = 'ชาร์จไฟรถ EV ⚡' WHERE name LIKE 'ชาร์จไฟรถ EV%'");
-      await db.query("UPDATE categories SET name = 'เงินออม / กองทุน 💰' WHERE name LIKE 'เงินออม / กองทุน%'");
-      await db.query("UPDATE categories SET name = 'ประกัน / ประกันสังคม 🛡️' WHERE name LIKE 'ประกัน / ประกันสังคม%'");
-      await db.query("UPDATE categories SET name = 'ชำระบัตรเครดิต/สินเชื่อ 💳' WHERE name LIKE 'ชำระบัตรเครดิต/สินเชื่อ%'");
-      await db.query("UPDATE categories SET name = 'ภาษี 📝' WHERE name LIKE 'ภาษี%'");
-      await db.query("UPDATE categories SET name = 'รายจ่ายอื่นๆ ⚙️' WHERE name LIKE 'รายจ่ายอื่นๆ%'");
+      await db.query("UPDATE categories SET name = 0xe0b88ae0b8b2e0b8a3e0b98ce0b888e0b984e0b89fe0b8a3e0b89620455620e29aa1 WHERE name LIKE 'ชาร์จไฟรถ EV%'");
+      await db.query("UPDATE categories SET name = 0xe0b980e0b887e0b8b4e0b899e0b8ade0b8ade0b8a1202f20e0b881e0b8ade0b887e0b897e0b8b8e0b89920f09f92b0 WHERE name LIKE 'เงินออม / กองทุน%'");
+      await db.query("UPDATE categories SET name = 0xe0b89be0b8a3e0b8b0e0b881e0b8b1e0b899202f20e0b89be0b8a3e0b8b0e0b881e0b8b1e0b899e0b8aae0b8b1e0b887e0b884e0b8a120f09f9ba1efb88f WHERE name LIKE 'ประกัน / ประกันสังคม%'");
+      await db.query("UPDATE categories SET name = 0xe0b88ae0b8b3e0b8a3e0b8b0e0b89ae0b8b1e0b895e0b8a3e0b980e0b884e0b8a3e0b894e0b8b4e0b8952fe0b8aae0b8b4e0b899e0b980e0b88ae0b8b7e0b988e0b8ad20f09f92b3 WHERE name LIKE 'ชำระบัตรเครดิต/สินเชื่อ%'");
+      await db.query("UPDATE categories SET name = 0xe0b8a0e0b8b2e0b8a9e0b8b520f09f939d WHERE name LIKE 'ภาษี%'");
+      await db.query("UPDATE categories SET name = 0xe0b8a3e0b8b2e0b888e0b988e0b8b2e0b8a2e0b8ade0b8b7e0b988e0b899e0b98620e29a99efb88f WHERE name LIKE 'รายจ่ายอื่นๆ%'");
 
-      await db.query("UPDATE categories SET parent_category = 'รายรับหลัก 💼' WHERE parent_category LIKE 'รายรับหลัก%'");
-      await db.query("UPDATE categories SET parent_category = 'รายรับอื่นๆ 💸' WHERE parent_category LIKE 'รายรับอื่นๆ%'");
-      await db.query("UPDATE categories SET parent_category = 'ที่อยู่อาศัย & สาธารณูปโภค 🏠' WHERE parent_category LIKE 'ที่อยู่อาศัย%'");
-      await db.query("UPDATE categories SET parent_category = 'การเดินทาง & ยานพาหนะ 🚗' WHERE parent_category LIKE 'การเดินทาง%'");
-      await db.query("UPDATE categories SET parent_category = 'อาหาร & เครื่องดื่ม 🍔' WHERE parent_category LIKE 'อาหาร%'");
-      await db.query("UPDATE categories SET parent_category = 'ของใช้ & ครอบครัว 🏠' WHERE parent_category LIKE 'ของใช้%'");
-      await db.query("UPDATE categories SET parent_category = 'การเงิน การออม & ประกัน 💰' WHERE parent_category LIKE 'การเงิน%'");
-      await db.query("UPDATE categories SET parent_category = 'สุขภาพ & การศึกษา 🏥' WHERE parent_category LIKE 'สุขภาพ%'");
-      await db.query("UPDATE categories SET parent_category = 'บันเทิง ภาษี & อื่นๆ ⚙️' WHERE parent_category LIKE 'บันเทิง%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b8a3e0b8b2e0b8a3e0b8b1e0b89ae0b8abe0b8a5e0b8b1e0b88120f09f92bc WHERE parent_category LIKE 'รายรับหลัก%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b8a3e0b8b2e0b8a3e0b8b1e0b89ae0b8ade0b8b7e0b988e0b899e0b98620f09f92b8 WHERE parent_category LIKE 'รายรับอื่นๆ%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b897e0b8b5e0b988e0b8ade0b8a2e0b8b9e0b988e0b8ade0b8b2e0b8a8e0b8b1e0b8a2202620e0b8aae0b8b2e0b898e0b8b2e0b8a3e0b893e0b8b9e0b89be0b982e0b8a0e0b88420f09f8fa0 WHERE parent_category LIKE 'ที่อยู่อาศัย%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b881e0b8b2e0b8a3e0b980e0b894e0b8b4e0b899e0b897e0b8b2e0b887202620e0b8a2e0b8b2e0b899e0b89ee0b8b2e0b8abe0b899e0b8b020f09f9a97 WHERE parent_category LIKE 'การเดินทาง%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b8ade0b8b2e0b8abe0b8a3202620e0b980e0b884e0b8a3e0b8b7e0b988e0b8ade0b887e0b894e0b8b7e0b988e0b8a120f09f8d94 WHERE parent_category LIKE 'อาหาร%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b882e0b8ade0b887e0b983e0b88ae0b989202620e0b884e0b8a3e0b8ade0b89ae0b884e0b8a3e0b8b1e0b8a720f09f8fa0 WHERE parent_category LIKE 'ของใช้%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b881e0b8b2e0b8a3e0b980e0b887e0b8b4e0b89920e0b881e0b8b2e0b8a3e0b8ade0b8ade0b8a1202620e0b89be0b8a3e0b8b0e0b881e0b8b1e0b89920f09f92b0 WHERE parent_category LIKE 'การเงิน%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b8aae0b8b8e0b882e0b8a0e0b8b2e0b89e202620e0b881e0b8b2e0b8a3e0b8a8e0b8b6e0b881e0b8a9e0b8b220f09f8fa5 WHERE parent_category LIKE 'สุขภาพ%'");
+      await db.query("UPDATE categories SET parent_category = 0xe0b89ae0b8b1e0b899e0b980e0b897e0b8b4e0b88720e0b8a0e0b8b2e0b8a9e0b8b5202620e0b8ade0b8b7e0b988e0b899e0b98620e29a99efb88f WHERE parent_category LIKE 'บันเทิง%'");
     }
 
   } catch (error) {
