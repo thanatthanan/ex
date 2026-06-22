@@ -105,20 +105,15 @@
               <input type="date" id="transactionDate" class="form-control" required>
             </div>
 
-            <!-- หมวดหมู่หลัก -->
-            <div class="form-group">
-              <label for="mainCategory"><i class="fa-solid fa-folder-open"></i> หมวดหมู่หลัก</label>
-              <select id="mainCategory" class="form-control" onchange="onMainCategoryChange()" required>
-                <!-- จะโหลดข้อมูลโดย JS -->
-              </select>
-            </div>
-
-            <!-- หมวดหมู่ย่อย -->
-            <div class="form-group" id="subCategoryGroup" style="display: none;">
-              <label for="categoryId"><i class="fa-solid fa-tags"></i> หมวดหมู่ย่อย</label>
-              <select id="categoryId" class="form-control" onchange="checkCategoryType(this)">
-                <!-- จะโหลดข้อมูลโดย JS -->
-              </select>
+            <!-- ค้นหาหมวดหมู่แบบพิมพ์ค้นหา -->
+            <div class="form-group category-search-container">
+              <label for="categorySearchInput"><i class="fa-solid fa-search"></i> ค้นหาหมวดหมู่ (พิมพ์ค้นหาได้เลย)</label>
+              <div class="search-input-wrapper">
+                <input type="text" id="categorySearchInput" class="form-control" placeholder="พิมพ์เพื่อค้นหา เช่น อาหาร, เดินทาง, ชาร์จรถ..." autocomplete="off" onclick="showCategorySuggestions()" oninput="filterCategorySuggestions()" required>
+                <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+              </div>
+              <input type="hidden" id="categoryId" required>
+              <div class="category-suggestions" id="categorySuggestions"></div>
             </div>
 
             <!-- เลือกประเภทมื้ออาหาร (จะแสดงเมื่อเลือกหมวดหมู่อาหาร) -->

@@ -1389,4 +1389,113 @@ footer {
   text-align: center;
 }
 
+/* Category Search Suggestion Dropdown */
+.category-search-container {
+  position: relative;
+}
+
+.search-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.search-input-wrapper input {
+  padding-right: 35px;
+}
+
+.search-input-wrapper .dropdown-arrow {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  transition: transform 0.2s ease;
+}
+
+.category-search-container.active .dropdown-arrow {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.category-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 5px;
+  background-color: var(--card-bg);
+  border: 3px solid var(--border-color);
+  border-radius: 18px;
+  box-shadow: 0 10px 25px rgba(142, 124, 119, 0.15);
+  max-height: 250px;
+  overflow-y: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+}
+
+.category-suggestions.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.15s ease;
+  border-bottom: 1.5px dashed var(--border-color);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background-color: rgba(255, 181, 181, 0.12); /* primary soft tint */
+}
+
+.suggestion-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.suggestion-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.suggestion-parent {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.suggestion-name {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.no-suggestions {
+  padding: 15px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 

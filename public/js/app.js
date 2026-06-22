@@ -153,41 +153,9 @@ async function fetchFamilyMembers() {
 }
 
 // เติมตัวเลือกใน Dropdown หมวดหมู่ตามประเภทธุรกรรม (รายรับ/รายจ่าย)
+// เติมตัวเลือกใน Dropdown หมวดหมู่ตามประเภทธุรกรรม (รายรับ/รายจ่าย)
 function populateCategoryDropdown() {
-  const mainSelect = document.getElementById('mainCategory');
-  if (mainSelect) {
-    mainSelect.innerHTML = '<option value="" disabled selected>-- เลือกหมวดหมู่หลัก --</option>';
-  }
-
-  // ซ่อนหมวดหมู่ย่อยเป็นค่าเริ่มต้น
-  const subCategoryGroup = document.getElementById('subCategoryGroup');
-  if (subCategoryGroup) subCategoryGroup.style.display = 'none';
-  const categorySelect = document.getElementById('categoryId');
-  if (categorySelect) {
-    categorySelect.innerHTML = '<option value="" disabled selected>-- เลือกหมวดหมู่ย่อย --</option>';
-    categorySelect.removeAttribute('required');
-  }
-
-  // ดึงกลุ่มของ parent_category ที่ไม่ซ้ำกันสำหรับประเภทธุรกรรมนี้
-  const uniqueParents = [];
-  categoriesList.forEach(c => {
-    if (c.type === activeTransactionType && c.parent_category) {
-      if (!uniqueParents.includes(c.parent_category)) {
-        uniqueParents.push(c.parent_category);
-      }
-    }
-  });
-
-  // เติมหมวดหมู่หลักใน dropdown
-  if (mainSelect) {
-    uniqueParents.forEach(parent => {
-      const option = document.createElement('option');
-      option.value = parent;
-      option.textContent = parent;
-      mainSelect.appendChild(option);
-    });
-  }
-
+  clearCategorySearch();
   // ล้างการแสดงผลฟิลด์รถ EV และ มื้ออาหาร ทุกครั้งที่เปลี่ยนประเภท
   const evSection = document.getElementById('evDetailsSection');
   if (evSection) evSection.classList.remove('show');
@@ -197,71 +165,133 @@ function populateCategoryDropdown() {
   if (recipientGroup) recipientGroup.style.display = 'none';
 }
 
-// เมื่อเลือกหมวดหมู่หลักแล้ว ค่อยให้เลือกหมวดหมู่ย่อย
-function onMainCategoryChange() {
-  const mainSelect = document.getElementById('mainCategory');
-  const selectedParent = mainSelect.value;
-  const categorySelect = document.getElementById('categoryId');
-  const subCategoryGroup = document.getElementById('subCategoryGroup');
+function clearCategorySearch() {
+  const searchInput = document.getElementById('categorySearchInput');
+  const categoryId = document.getElementById('categoryId');
+  if (searchInput) searchInput.value = '';
+  if (categoryId) categoryId.value = '';
+  checkSelectedCategoryName(''); // ซ่อนฟิลด์รถ EV, มื้ออาหาร, และผู้ได้รับเงิน
+}
 
-  if (!selectedParent) {
-    if (subCategoryGroup) subCategoryGroup.style.display = 'none';
-    if (categorySelect) categorySelect.removeAttribute('required');
+// โค้ดสำหรับดึงข้อมูลเมื่อเลือกหมวดหมู่หลัก (ไม่ใช้แล้วแต่ยังเก็บฟังก์ชันไว้ป้องกัน JS Error)
+function onMainCategoryChange() {}
+
+// Show all suggestions for the current transaction type
+function showCategorySuggestions() {
+  const suggestionsBox = document.getElementById('categorySuggestions');
+  const searchInput = document.getElementById('categorySearchInput');
+  if (!suggestionsBox || !searchInput) return;
+  
+  const container = searchInput.closest('.category-search-container');
+  const filtered = categoriesList.filter(c => c.type === activeTransactionType);
+  renderCategorySuggestions(filtered);
+  
+  suggestionsBox.classList.add('show');
+  if (container) container.classList.add('active');
+}
+
+// Filter suggestions based on typed input
+function filterCategorySuggestions() {
+  const searchInput = document.getElementById('categorySearchInput');
+  const suggestionsBox = document.getElementById('categorySuggestions');
+  if (!searchInput || !suggestionsBox) return;
+  
+  const query = searchInput.value.toLowerCase().trim();
+  const filtered = categoriesList.filter(c => {
+    if (c.type !== activeTransactionType) return false;
+    const nameMatch = c.name.toLowerCase().includes(query);
+    const parentMatch = c.parent_category ? c.parent_category.toLowerCase().includes(query) : false;
+    return nameMatch || parentMatch;
+  });
+  
+  renderCategorySuggestions(filtered);
+}
+
+// Render the suggestion items list
+function renderCategorySuggestions(list) {
+  const suggestionsBox = document.getElementById('categorySuggestions');
+  if (!suggestionsBox) return;
+  
+  suggestionsBox.innerHTML = '';
+  
+  if (list.length === 0) {
+    suggestionsBox.innerHTML = '<div class="no-suggestions">❌ ไม่พบหมวดหมู่ที่ต้องการ</div>';
     return;
   }
+  
+  list.forEach(cat => {
+    const item = document.createElement('div');
+    item.className = 'suggestion-item';
+    
+    // Background color with opacity for the icon box
+    const iconBgColor = hexToRgba(cat.color || '#888888', 0.15);
+    const iconColor = cat.color || '#888888';
+    const iconClass = cat.icon || 'fa-question';
+    
+    item.innerHTML = `
+      <div class="suggestion-icon" style="background-color: ${iconBgColor}; color: ${iconColor};">
+        <i class="fa-solid ${iconClass}"></i>
+      </div>
+      <div class="suggestion-text">
+        <span class="suggestion-parent">${cat.parent_category || 'หมวดหมู่ทั่วไป'}</span>
+        <span class="suggestion-name">${cat.name}</span>
+      </div>
+    `;
+    
+    item.onclick = (e) => {
+      e.stopPropagation();
+      selectCategory(cat);
+    };
+    
+    suggestionsBox.appendChild(item);
+  });
+}
 
-  // กรองหมวดหมู่ย่อยที่มี parent_category ตรงกัน และ type ตรงกัน
-  const subCategories = categoriesList.filter(c => c.type === activeTransactionType && c.parent_category === selectedParent);
-
-  if (subCategories.length > 1) {
-    // แสดงดรอปดาวน์หมวดหมู่ย่อย
-    if (subCategoryGroup) subCategoryGroup.style.display = 'block';
-    if (categorySelect) {
-      categorySelect.innerHTML = '<option value="" disabled selected>-- เลือกหมวดหมู่ย่อย --</option>';
-      categorySelect.setAttribute('required', 'required');
-      
-      subCategories.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat.id;
-        option.textContent = cat.name;
-        categorySelect.appendChild(option);
-      });
+// Helper to convert hex to rgba
+function hexToRgba(hex, alpha) {
+  let c;
+  if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){
+    c= hex.substring(1).split('');
+    if(c.length== 3){
+      c= [c[0], c[0], c[1], c[1], c[2], c[2]];
     }
+    c= '0x' + c.join('');
+    return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')';
+  }
+  return 'rgba(0,0,0,'+alpha+')';
+}
 
-    // ซ่อนกล่อง EV และกลุ่มพิเศษอื่น ๆ ก่อนจนกว่าจะเลือกหมวดหมู่ย่อย
-    const evSection = document.getElementById('evDetailsSection');
-    if (evSection) evSection.classList.remove('show');
-    const mealGroup = document.getElementById('mealTypeGroup');
-    if (mealGroup) mealGroup.style.display = 'none';
-    const recipientGroup = document.getElementById('recipientGroup');
-    if (recipientGroup) recipientGroup.style.display = 'none';
+// Handle category selection
+function selectCategory(cat) {
+  const searchInput = document.getElementById('categorySearchInput');
+  const categoryId = document.getElementById('categoryId');
+  const suggestionsBox = document.getElementById('categorySuggestions');
+  const container = document.querySelector('.category-search-container');
+  
+  if (searchInput && categoryId) {
+    searchInput.value = `${cat.parent_category || 'หมวดหมู่หลัก'} ➔ ${cat.name}`;
+    categoryId.value = cat.id;
+  }
+  
+  if (suggestionsBox) suggestionsBox.classList.remove('show');
+  if (container) container.classList.remove('active');
+  
+  checkSelectedCategoryName(cat.name);
+}
 
-  } else if (subCategories.length === 1) {
-    // ซ่อนดรอปดาวน์หมวดหมู่ย่อย และเลือกหมวดหมู่นั้นอัตโนมัติ
-    if (subCategoryGroup) subCategoryGroup.style.display = 'none';
-    if (categorySelect) {
-      categorySelect.removeAttribute('required');
-      categorySelect.innerHTML = '';
-      
-      const cat = subCategories[0];
-      const option = document.createElement('option');
-      option.value = cat.id;
-      option.textContent = cat.name;
-      option.selected = true;
-      categorySelect.appendChild(option);
-      
-      // เรียกใช้ฟังก์ชันตรวจสอบประเภทหมวดหมู่เพื่อแสดงฟิลด์พิเศษ
-      checkCategoryType(categorySelect);
-    }
-  } else {
-    // ไม่มีหมวดหมู่ย่อย
-    if (subCategoryGroup) subCategoryGroup.style.display = 'none';
-    if (categorySelect) {
-      categorySelect.removeAttribute('required');
-      categorySelect.innerHTML = '';
+// Close suggestion dropdown when clicking outside
+document.addEventListener('click', function(e) {
+  const suggestionsBox = document.getElementById('categorySuggestions');
+  const searchInput = document.getElementById('categorySearchInput');
+  const container = document.querySelector('.category-search-container');
+  
+  if (suggestionsBox && searchInput) {
+    if (!suggestionsBox.contains(e.target) && e.target !== searchInput) {
+      suggestionsBox.classList.remove('show');
+      if (container) container.classList.remove('active');
     }
   }
-}
+});
 
 // เปลี่ยนปุ่มสวิตช์ประเภท รายรับ - รายจ่าย
 function setTransactionType(type) {
@@ -317,20 +347,36 @@ function toggleCustomStationInput() {
 }
 
 // เช็คว่าหมวดหมู่ที่เลือกใช่ ชาร์จรถ EV ไหม เพื่อเปิดฟอร์มรายละเอียดชาร์จ
+// เช็คว่าหมวดหมู่ที่เลือกใช่ ชาร์จรถ EV ไหม เพื่อเปิดฟอร์มรายละเอียดชาร์จ
 function checkCategoryType(selectElement) {
   if (!selectElement || selectElement.selectedIndex === -1 || !selectElement.options[selectElement.selectedIndex]) {
     return;
   }
   const selectedText = selectElement.options[selectElement.selectedIndex].text;
+  checkSelectedCategoryName(selectedText);
+}
+
+// ตรวจสอบชื่อหมวดหมู่ที่เลือกเพื่อแสดงฟิลด์เสริมต่างๆ เช่น บันทึกรถ EV, มื้ออาหาร, ผู้รับเงิน
+function checkSelectedCategoryName(selectedText) {
   const evSection = document.getElementById('evDetailsSection');
   const mealGroup = document.getElementById('mealTypeGroup');
+  const recipientGroup = document.getElementById('recipientGroup');
+
+  if (!selectedText) {
+    if (evSection) evSection.classList.remove('show');
+    if (mealGroup) mealGroup.style.display = 'none';
+    if (recipientGroup) recipientGroup.style.display = 'none';
+    return;
+  }
 
   // ตรวจจับคีย์เวิร์ดเช่น 'EV' หรือ 'ชาร์จไฟ'
   if (selectedText.includes('EV') || selectedText.includes('ชาร์จไฟ')) {
-    evSection.classList.add('show');
-    updateEVDescription();
+    if (evSection) {
+      evSection.classList.add('show');
+      updateEVDescription();
+    }
   } else {
-    evSection.classList.remove('show');
+    if (evSection) evSection.classList.remove('show');
   }
 
   // ตรวจจับหมวดหมู่อาหาร
@@ -343,7 +389,6 @@ function checkCategoryType(selectElement) {
   }
 
   // ตรวจจับหมวดหมู่ให้ครอบครัว
-  const recipientGroup = document.getElementById('recipientGroup');
   if (recipientGroup) {
     if (selectedText.includes('ให้ครอบครัว') || selectedText.includes('คนในบ้าน')) {
       recipientGroup.style.display = 'block';
@@ -917,16 +962,15 @@ function startEditTransaction(id) {
   // ตั้งค่าหมวดหมู่
   const category = categoriesList.find(c => c.id === t.category_id);
   if (category) {
-    const mainSelect = document.getElementById('mainCategory');
-    if (mainSelect) {
-      mainSelect.value = category.parent_category;
-      onMainCategoryChange();
+    const searchInput = document.getElementById('categorySearchInput');
+    if (searchInput) {
+      searchInput.value = `${category.parent_category || 'หมวดหมู่หลัก'} ➔ ${category.name}`;
     }
-    const categorySelect = document.getElementById('categoryId');
-    if (categorySelect) {
-      categorySelect.value = t.category_id;
-      checkCategoryType(categorySelect);
+    const hiddenId = document.getElementById('categoryId');
+    if (hiddenId) {
+      hiddenId.value = t.category_id;
     }
+    checkSelectedCategoryName(category.name);
   }
   
   // ตั้งค่าวิธีการชำระเงิน
