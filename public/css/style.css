@@ -698,9 +698,15 @@ header {
 /* EV Statistics Details Grid */
 .ev-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   margin-bottom: 25px;
+}
+
+@media (min-width: 992px) {
+  .ev-stats-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
 }
 
 .ev-stat-card {
