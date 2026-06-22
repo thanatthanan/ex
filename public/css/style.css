@@ -651,6 +651,36 @@ header {
   transform: scale(1.2);
 }
 
+.btn-action-edit {
+  background: none;
+  border: none;
+  color: var(--ev-color);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 5px;
+  transition: all 0.2s ease;
+}
+
+.btn-action-edit:hover {
+  color: var(--primary-hover);
+  transform: scale(1.2);
+}
+
+.btn-action-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 5px;
+  transition: all 0.2s ease;
+}
+
+.btn-action-delete:hover {
+  color: var(--expense-color);
+  transform: scale(1.2);
+}
+
 /* EV Badge on Transactions */
 .ev-badge {
   display: inline-flex;
@@ -1208,13 +1238,14 @@ footer {
     color: var(--text-color);
   }
 
-  /* ซ่อนข้อมูลตั้งแต่ คนบันทึก จนถึง เลขไมล์ บนมือถือโดยปกติ */
+  /* ซ่อนข้อมูลตั้งแต่ คนบันทึก จนถึง จัดการ บนมือถือโดยปกติ */
   .ev-table td[data-label="คนบันทึก"],
   .ev-table td[data-label="สถานีชาร์จ"],
   .ev-table td[data-label="หัวชาร์จ"],
   .ev-table td[data-label="ปริมาณไฟ"],
   .ev-table td[data-label="แบตเตอรี่"],
-  .ev-table td[data-label="เลขไมล์"] {
+  .ev-table td[data-label="เลขไมล์"],
+  .ev-table td[data-label="จัดการ"] {
     display: none !important;
   }
 
@@ -1224,7 +1255,8 @@ footer {
   .ev-table tr.expanded td[data-label="หัวชาร์จ"],
   .ev-table tr.expanded td[data-label="ปริมาณไฟ"],
   .ev-table tr.expanded td[data-label="แบตเตอรี่"],
-  .ev-table tr.expanded td[data-label="เลขไมล์"] {
+  .ev-table tr.expanded td[data-label="เลขไมล์"],
+  .ev-table tr.expanded td[data-label="จัดการ"] {
     display: flex !important;
   }
 

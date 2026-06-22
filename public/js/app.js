@@ -10,6 +10,7 @@ let editCreditStatus = 'none';
 let currentTransactions = [];
 let unpaidTransactionsList = [];
 let activeCreditCardFilter = 'all';
+let currentEVLogs = [];
 
 // ไอคอนอวตารน่ารักๆ
 const avatarMap = {
@@ -611,6 +612,7 @@ async function deleteTransaction(id) {
     const data = await res.json();
     if (data.success) {
       await fetchTransactions();
+      await fetchEVStatistics();
     } else {
       alert(data.message || 'ลบไม่สำเร็จ');
     }
@@ -785,6 +787,7 @@ async function fetchEVStatistics() {
     if (data.success) {
       const stats = data.stats;
       const logs = data.logs;
+      currentEVLogs = logs;
 
       // อัปเดตการ์ดสถิติ EV
       document.getElementById('evTotalCost').textContent = `${parseFloat(stats.totalCost).toLocaleString('th-TH')} ฿`;
@@ -843,6 +846,12 @@ async function fetchEVStatistics() {
             <strong>${parseFloat(log.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</strong>
             ${badgeHTML}
           </td>
+          <td data-label="จัดการ">
+            <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
+              <button class="btn-action-edit" onclick="startEditTransaction(${log.transaction_id})" title="แก้ไขรายการนี้"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button class="btn-action-delete" onclick="deleteTransaction(${log.transaction_id})" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          </td>
           <td class="mobile-only-cell">
             <button class="btn-toggle-ev-details" onclick="toggleEVRowDetails(this)">
               <i class="fa-solid fa-chevron-down"></i> ดูรายละเอียด
@@ -859,11 +868,44 @@ async function fetchEVStatistics() {
 
 // เริ่มเข้าสู่โหมดแก้ไขรายการ
 function startEditTransaction(id) {
-  const t = currentTransactions.find(item => item.id === id);
+  let t = currentTransactions.find(item => item.id === id);
+  if (!t) {
+    const evLog = currentEVLogs.find(item => item.transaction_id === id);
+    if (evLog) {
+      t = {
+        id: evLog.transaction_id,
+        amount: evLog.amount,
+        type: 'expense',
+        category_id: evLog.category_id,
+        transaction_date: evLog.transaction_date,
+        description: evLog.description,
+        payment_method: evLog.payment_method,
+        credit_status: evLog.credit_status,
+        credit_card_name: evLog.credit_card_name,
+        meal_type: evLog.meal_type,
+        recipient: evLog.recipient,
+        station_name: evLog.station_name,
+        station_branch: evLog.station_branch,
+        station_cabinet: evLog.station_cabinet,
+        charger_power: evLog.charger_power,
+        energy_delivered: evLog.energy_delivered,
+        start_battery: evLog.start_battery,
+        end_battery: evLog.end_battery,
+        odometer: evLog.odometer
+      };
+    }
+  }
   if (!t) return;
 
   editTransactionId = id;
   editCreditStatus = t.credit_status || 'none';
+
+  // สลับแท็บเพื่อให้ผู้ใช้เห็นฟอร์มแก้ไขทันที
+  if (window.innerWidth <= 600) {
+    switchTab('form-tab');
+  } else {
+    switchTab('transactions-tab');
+  }
 
   // เลื่อนจอไปที่ฟอร์มด้านบนอย่างนุ่มนวล
   document.getElementById('transactionForm').scrollIntoView({ behavior: 'smooth' });
