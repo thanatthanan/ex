@@ -782,11 +782,9 @@ footer {
     padding: 0 12px;
   }
 
-  /* ปรับการ์ดสรุปยอดเป็น 2 คอลัมน์บนมือถือ */
+  /* ซ่อนการ์ดสรุปยอดทั้ง 4 กล่องบนมือถือ */
   .summary-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
+    display: none !important;
   }
 
   .summary-card {
