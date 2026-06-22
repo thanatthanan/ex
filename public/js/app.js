@@ -843,6 +843,11 @@ async function fetchEVStatistics() {
             <strong>${parseFloat(log.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</strong>
             ${badgeHTML}
           </td>
+          <td class="mobile-only-cell">
+            <button class="btn-toggle-ev-details" onclick="toggleEVRowDetails(this)">
+              <i class="fa-solid fa-chevron-down"></i> ดูรายละเอียด
+            </button>
+          </td>
         `;
         tableBody.appendChild(tr);
       });
@@ -1371,5 +1376,19 @@ document.addEventListener('click', function(event) {
     }
   }
 });
+
+// Toggle EV log row details on mobile
+function toggleEVRowDetails(button) {
+  const tr = button.closest('tr');
+  if (!tr) return;
+  
+  const isExpanded = tr.classList.toggle('expanded');
+  
+  if (isExpanded) {
+    button.innerHTML = '<i class="fa-solid fa-chevron-up"></i> ซ่อนรายละเอียด';
+  } else {
+    button.innerHTML = '<i class="fa-solid fa-chevron-down"></i> ดูรายละเอียด';
+  }
+}
 
 
