@@ -18,14 +18,18 @@
       <i class="fa-solid fa-house-chimney-heart"></i>
       ex<span>pense</span>
     </div>
-    <div class="user-profile-header">
-      <div class="user-avatar" id="headerAvatar">👨</div>
-      <div>
-        <div class="user-name" id="headerDisplayName">คุณพ่อ</div>
-        <div style="display: flex; gap: 8px; margin-top: 4px;">
-          <button class="btn-logout" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> เปลี่ยนรหัส</button>
-          <button class="btn-logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+    <div class="user-profile-dropdown-container">
+      <div class="user-profile-header" id="userProfileTrigger" onclick="toggleProfileDropdown(event)">
+        <div class="user-avatar" id="headerAvatar">👨</div>
+        <div class="user-info-text">
+          <span class="user-name" id="headerDisplayName">คุณพ่อ</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
         </div>
+      </div>
+      <div class="profile-dropdown-menu" id="profileDropdownMenu">
+        <button class="dropdown-item" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> เปลี่ยนรหัส</button>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
       </div>
     </div>
   </header>

@@ -1349,3 +1349,27 @@ async function handleChangePassword(event) {
   }
 }
 
+// Toggle user profile dropdown
+function toggleProfileDropdown(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('profileDropdownMenu');
+  const trigger = document.getElementById('userProfileTrigger');
+  if (menu && trigger) {
+    menu.classList.toggle('show');
+    trigger.classList.toggle('active');
+  }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(event) {
+  const menu = document.getElementById('profileDropdownMenu');
+  const trigger = document.getElementById('userProfileTrigger');
+  if (menu && menu.classList.contains('show')) {
+    if (!menu.contains(event.target) && !trigger.contains(event.target)) {
+      menu.classList.remove('show');
+      trigger.classList.remove('active');
+    }
+  }
+});
+
+
