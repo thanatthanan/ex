@@ -787,11 +787,11 @@ footer {
     display: none !important;
   }
 
-  /* แสดงการ์ดสรุปยอดเป็น 2 คอลัมน์ภายในแท็บ "สรุปยอด" */
+  /* แสดงการ์ดสรุปยอดเป็น 1 คอลัมน์ (กว้างเต็มแนวนอน) ภายในแท็บ "สรุปยอด" */
   #summary-tab .summary-grid {
     display: grid !important;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
+    grid-template-columns: 1fr;
+    gap: 12px;
     margin-bottom: 20px;
     margin-top: 10px;
   }
@@ -1076,15 +1076,15 @@ footer {
    ========================================== */
 @media (max-width: 400px) {
   .summary-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .summary-card {
     padding: 10px;
-    gap: 8px;
-    flex-direction: column;
-    align-items: flex-start;
+    gap: 12px;
+    flex-direction: row;
+    align-items: center;
   }
 
   .summary-card .icon-box {
