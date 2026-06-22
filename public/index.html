@@ -33,7 +33,7 @@
   <div class="container">
     
     <!-- 1. Summary Cards Overview -->
-    <div class="summary-grid">
+    <div class="summary-grid" id="summaryGrid">
       <div class="summary-card balance">
         <div class="icon-box"><i class="fa-solid fa-piggy-bank"></i></div>
         <div class="details">
@@ -70,6 +70,7 @@
       <button class="tab-btn active desktop-only" onclick="switchTab('transactions-tab')"><i class="fa-solid fa-pen-fancy"></i> บันทึกรายวัน</button>
       
       <!-- Mobile Tabs -->
+      <button class="tab-btn mobile-only" onclick="switchTab('summary-tab')"><i class="fa-solid fa-wallet"></i> สรุปยอด</button>
       <button class="tab-btn active mobile-only" onclick="switchTab('form-tab')"><i class="fa-solid fa-pen-to-square"></i> จดบันทึก</button>
       <button class="tab-btn mobile-only" onclick="switchTab('list-tab')"><i class="fa-solid fa-list-check"></i> รายการเงิน</button>
       
@@ -285,6 +286,10 @@
     </div>
 
     <!-- Mobile-only Tab content containers -->
+    <div id="summary-tab" class="tab-content mobile-only">
+      <!-- จะย้ายการ์ดสรุปยอดมาแสดงที่นี่โดย JS บนมือถือ -->
+    </div>
+
     <div id="form-tab" class="tab-content mobile-only">
       <!-- Form card will be appended here dynamically by JS on mobile -->
     </div>

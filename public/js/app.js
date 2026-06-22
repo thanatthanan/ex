@@ -1238,12 +1238,17 @@ function handleResponsiveLayout() {
   const isMobile = window.innerWidth <= 600;
   const formCard = document.getElementById('transactionFormCard');
   const listCard = document.getElementById('transactionListCard');
+  const summaryGrid = document.getElementById('summaryGrid');
   const desktopContainer = document.getElementById('desktopTransactionsContainer');
   const formTab = document.getElementById('form-tab');
   const listTab = document.getElementById('list-tab');
+  const summaryTab = document.getElementById('summary-tab');
 
   if (isMobile) {
-    // หน้าจอมือถือ: ย้ายฟอร์มไป form-tab และรายการไป list-tab
+    // หน้าจอมือถือ: ย้ายฟอร์มไป form-tab, รายการไป list-tab, และการ์ดสรุปยอดไป summary-tab
+    if (summaryTab && summaryGrid && summaryGrid.parentNode !== summaryTab) {
+      summaryTab.appendChild(summaryGrid);
+    }
     if (formTab && formCard && formCard.parentNode !== formTab) {
       formTab.appendChild(formCard);
     }
@@ -1258,6 +1263,10 @@ function handleResponsiveLayout() {
     }
   } else {
     // หน้าจอเดสก์ท็อป: ย้ายกลับมาอยู่ในตู้คอนเทนเนอร์หลัก
+    const container = document.querySelector('.container');
+    if (container && summaryGrid && summaryGrid.parentNode !== container) {
+      container.insertBefore(summaryGrid, container.firstChild);
+    }
     if (desktopContainer) {
       if (formCard && formCard.parentNode !== desktopContainer) {
         desktopContainer.appendChild(formCard);
@@ -1267,9 +1276,9 @@ function handleResponsiveLayout() {
       }
     }
 
-    // แก้ปัญหาหน้าจอดับเมื่อขยายขนาดหน้าจอ: ถ้าแท็บปัจจุบันเป็นแท็บมือถือ (ฟอร์มหรือรายการ) ให้สลับไปแท็บรวมเดสก์ท็อป
+    // แก้ปัญหาหน้าจอดับเมื่อขยายขนาดหน้าจอ: ถ้าแท็บปัจจุบันเป็นแท็บมือถือ ให้สลับไปแท็บรวมเดสก์ท็อป
     const activeTab = document.querySelector('.tab-content.active');
-    if (activeTab && (activeTab.id === 'form-tab' || activeTab.id === 'list-tab')) {
+    if (activeTab && (activeTab.id === 'form-tab' || activeTab.id === 'list-tab' || activeTab.id === 'summary-tab')) {
       switchTab('transactions-tab');
     }
   }

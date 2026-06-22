@@ -782,9 +782,18 @@ footer {
     padding: 0 12px;
   }
 
-  /* ซ่อนการ์ดสรุปยอดทั้ง 4 กล่องบนมือถือ */
-  .summary-grid {
+  /* ซ่อนการ์ดสรุปยอดตรงด้านบนหัวของมือถือ */
+  .container > .summary-grid {
     display: none !important;
+  }
+
+  /* แสดงการ์ดสรุปยอดเป็น 2 คอลัมน์ภายในแท็บ "สรุปยอด" */
+  #summary-tab .summary-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+    margin-top: 10px;
   }
 
   .summary-card {
