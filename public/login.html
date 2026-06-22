@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>เข้าสู่ระบบครอบครัวอบอุ่น 🏠 | Family Account</title>
   <!-- CSS Styles -->
-  <link rel="icon" type="image/png" href="/favicon.png">
-  <link rel="stylesheet" href="/css/style.css?v=1.0.2">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="stylesheet" href="css/style.css?v=1.0.2">
   <!-- FontAwesome & Font -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -53,6 +53,9 @@
   </div>
 
   <script>
+    // Detect base path automatically
+    const basePath = window.location.pathname.startsWith('/exapp') ? '/exapp' : '';
+
     // เลือกสมาชิกครอบครัวด่วน
     function selectMember(username, displayName) {
       document.getElementById('username').value = username;
@@ -74,7 +77,7 @@
       errorDiv.style.display = 'none';
 
       try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch(basePath + '/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
@@ -84,7 +87,7 @@
 
         if (data.success) {
           // รีไดเรกต์ไปที่หน้าหลัก
-          window.location.href = '/';
+          window.location.href = basePath + '/';
         } else {
           errorDiv.textContent = data.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
           errorDiv.style.display = 'block';
@@ -98,10 +101,10 @@
     // ตรวจเช็คว่ามีเซสชันอยู่แล้วหรือไม่
     window.onload = async () => {
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await fetch(basePath + '/api/auth/me');
         const data = await res.json();
         if (data.success) {
-          window.location.href = '/';
+          window.location.href = basePath + '/';
         }
       } catch (e) {
         // ทำงานต่อปกติ

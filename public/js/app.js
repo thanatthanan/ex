@@ -1,4 +1,5 @@
 // ตัวแปรเก็บข้อมูลส่วนกลาง
+const basePath = window.location.pathname.startsWith('/exapp') ? '/exapp' : '';
 let currentUser = null;
 let categoriesList = [];
 let activeTransactionType = 'expense'; // ค่าเริ่มต้นเป็น 'รายจ่าย'
@@ -51,7 +52,7 @@ window.onload = async () => {
 // เช็คล็อกอิน
 async function checkAuth() {
   try {
-    const res = await fetch('/api/auth/me');
+    const res = await fetch(basePath + '/api/auth/me');
     const data = await res.json();
     if (data.success) {
       currentUser = data.user;
@@ -59,12 +60,12 @@ async function checkAuth() {
       document.getElementById('headerDisplayName').textContent = currentUser.displayName;
       return true;
     } else {
-      window.location.href = '/login';
+      window.location.href = basePath + '/login';
       return false;
     }
   } catch (error) {
     console.error('Auth error:', error);
-    window.location.href = '/login';
+    window.location.href = basePath + '/login';
     return false;
   }
 }
@@ -108,7 +109,7 @@ function setupFilters() {
 // ดึงหมวดหมู่ทั้งหมด
 async function fetchCategories() {
   try {
-    const res = await fetch('/api/transactions/categories');
+    const res = await fetch(basePath + '/api/transactions/categories');
     const data = await res.json();
     if (data.success) {
       categoriesList = data.categories;
@@ -122,7 +123,7 @@ async function fetchCategories() {
 // ดึงสมาชิกครอบครัว
 async function fetchFamilyMembers() {
   try {
-    const res = await fetch('/api/auth/users');
+    const res = await fetch(basePath + '/api/auth/users');
     const data = await res.json();
     if (data.success) {
       const userFilter = document.getElementById('filterUser');
@@ -354,7 +355,7 @@ async function fetchTransactions() {
   try {
     // แยกเงินกันรายบุคคล ไม่นำมารวมกัน (ถ้ายังไม่มีการเลือกในดรอปดาวน์ให้ใช้ของผู้ใช้ที่ล็อกอินอยู่)
     const targetUserId = userId || (currentUser ? currentUser.id : '');
-    let url = `/api/transactions?month=${month}&year=${year}`;
+    let url = `${basePath}/api/transactions?month=${month}&year=${year}`;
     if (targetUserId) url += `&user_id=${targetUserId}`;
 
     if (filterPayment && filterPayment !== 'all') {
@@ -536,7 +537,7 @@ async function saveTransaction(event) {
   }
 
   try {
-    const url = editTransactionId ? `/api/transactions/${editTransactionId}` : '/api/transactions';
+    const url = editTransactionId ? `${basePath}/api/transactions/${editTransactionId}` : basePath + '/api/transactions';
     const method = editTransactionId ? 'PUT' : 'POST';
 
     // ถ้าอยู่ในโหมดแก้ไข ให้รักษาค่า credit_status เดิมไว้ด้วย
@@ -597,7 +598,7 @@ async function deleteTransaction(id) {
   if (!confirm('แน่ใจนะว่าจะลบรายการนี้? 🥺')) return;
 
   try {
-    const res = await fetch(`/api/transactions/${id}`, {
+    const res = await fetch(`${basePath}/api/transactions/${id}`, {
       method: 'DELETE'
     });
     const data = await res.json();
@@ -653,7 +654,7 @@ async function renderAnalyticsCharts() {
   const userId = document.getElementById('filterUser').value;
 
   try {
-    let url = `/api/transactions?month=${month}&year=${year}`;
+    let url = `${basePath}/api/transactions?month=${month}&year=${year}`;
     if (userId) url += `&user_id=${userId}`;
 
     const res = await fetch(url);
@@ -771,7 +772,7 @@ async function renderAnalyticsCharts() {
 // โหลดข้อมูลสถิติชาร์จ EV
 async function fetchEVStatistics() {
   try {
-    const res = await fetch('/api/ev/stats');
+    const res = await fetch(basePath + '/api/ev/stats');
     const data = await res.json();
 
     if (data.success) {
@@ -1036,7 +1037,7 @@ async function fetchUnpaidCredits() {
   if (!targetUserId) return;
   
   try {
-    const res = await fetch(`/api/transactions?credit_status=unpaid&user_id=${targetUserId}`);
+    const res = await fetch(`${basePath}/api/transactions?credit_status=unpaid&user_id=${targetUserId}`);
     const data = await res.json();
     if (data.success) {
       unpaidTransactionsList = data.transactions;
@@ -1160,7 +1161,7 @@ async function payCreditTransactions() {
   }
   
   try {
-    const res = await fetch('/api/transactions/pay-credit', {
+    const res = await fetch(basePath + '/api/transactions/pay-credit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1186,10 +1187,10 @@ async function handleLogout() {
   if (!confirm('ออกจากระบบใช่ไหมครับบ๊ายบาย? 👋')) return;
 
   try {
-    const res = await fetch('/api/auth/logout', { method: 'POST' });
+    const res = await fetch(basePath + '/api/auth/logout', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      window.location.href = '/login';
+      window.location.href = basePath + '/login';
     }
   } catch (error) {
     console.error('Logout error:', error);

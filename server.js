@@ -2,11 +2,22 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+require('dotenv').config(); // โหลด .env file
 const db = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const BASE = process.env.BASE_PATH || ''; // เช่น '/ex' สำหรับ subdirectory
+
+// Middleware สำหรับจัดการกับ Subdirectory /exapp บน Production
+app.use((req, res, next) => {
+  if (req.url === '/exapp') {
+    return res.redirect(301, '/exapp/');
+  }
+  if (req.url.startsWith('/exapp/')) {
+    req.url = req.url.substring(6) || '/';
+  }
+  next();
+});
 
 // Middleware สำหรับจัดการ JSON และ Form-encoded data
 app.use(express.json());
@@ -21,14 +32,15 @@ app.use(session({
 }));
 
 // เสิร์ฟไฟล์สแตติกจากโฟลเดอร์ public
-app.use(BASE, express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // เช็คว่าเชื่อมต่อฐานข้อมูลได้ไหม และช่วยสร้างตาราง/ข้อมูลตัวอย่างให้อัตโนมัติ (Auto-seeding)
 async function initializeDatabase() {
   try {
-    // 1. ตรวจสอบการเชื่อมต่อ
+    // 1. ตรวจสอบการเชื่อมต่อ และเปิดใช้ UTF8MB4 บนการเชื่อมต่อนี้
+    await db.query('SET NAMES utf8mb4');
     await db.query('SELECT 1');
-    console.log('✅ เชื่อมต่อ MySQL สำเร็จ!');
+    console.log('✅ เชื่อมต่อ MySQL และตั้งค่า Session UTF8MB4 สำเร็จ!');
 
     // 2. สร้างตารางผู้ใช้
     await db.query(`
@@ -93,6 +105,29 @@ async function initializeDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // 5.0 แปลงฐานข้อมูลและตารางทั้งหมดที่มีอยู่แล้วให้เป็น utf8mb4 เพื่อรองรับ Emoji
+    try {
+      const dbName = process.env.DB_NAME || 'family_expense';
+      await db.query(`ALTER DATABASE \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
+      await db.query('ALTER TABLE `users` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+      await db.query('ALTER TABLE `categories` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+      await db.query('ALTER TABLE `transactions` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+      await db.query('ALTER TABLE `ev_logs` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+      console.log('✅ แปลงฐานข้อมูลและทุกตารางในระบบเป็น UTF8MB4 สำเร็จ!');
+    } catch (e) {
+      console.error('❌ ข้อผิดพลาดในการแปลงตารางเป็น UTF8MB4:', e.message);
+    }
+
+    // 5.1 ตรวจสอบว่าเคยมีรายการธุรกรรมไหม ถ้ายังไม่มีเลย สามารถรีเซ็ตตารางผู้ใช้และหมวดหมู่เพื่อแก้ปัญหาฟอนต์/อีโมจิเพี้ยนได้
+    const [transactionsCount] = await db.query('SELECT COUNT(*) as count FROM transactions');
+    if (transactionsCount[0].count === 0) {
+      await db.query('SET FOREIGN_KEY_CHECKS = 0');
+      await db.query('DELETE FROM users');
+      await db.query('DELETE FROM categories');
+      await db.query('SET FOREIGN_KEY_CHECKS = 1');
+      console.log('🔄 ตรวจพบระบบว่างเปล่า ทำการรีเซ็ตข้อมูลเริ่มต้นเพื่อรองรับ UTF8MB4...');
+    }
+
     // 6. เพิ่มข้อมูลผู้ใช้เริ่มต้น (สำหรับใช้ในครอบครัว 3 คน: dad, mom, kid รหัสผ่าน: 1234)
     const [users] = await db.query('SELECT COUNT(*) as count FROM users');
     if (users[0].count === 0) {
@@ -107,6 +142,11 @@ async function initializeDatabase() {
         ('kid', ?, 'ลูกชาย 👦', 'kid')
       `, [hashedPassword, hashedPassword, hashedPassword]);
       console.log('✅ สร้างผู้ใช้เริ่มต้นสำเร็จ (รหัสผ่านเริ่มต้นคือ "1234")');
+    } else {
+      // บังคับแก้ไขชื่อหลักให้มีอีโมจิที่ถูกต้อง เผื่อกรณีที่ข้อมูลค้างเก่าไม่ถูกเคลียร์
+      await db.query("UPDATE users SET display_name = 'คุณพ่อ 👨' WHERE username = 'dad'");
+      await db.query("UPDATE users SET display_name = 'คุณแม่ 👩' WHERE username = 'mom'");
+      await db.query("UPDATE users SET display_name = 'ลูกชาย 👦' WHERE username = 'kid'");
     }
 
     // 7. เพิ่มหมวดหมู่เริ่มต้นหากยังไม่มี
@@ -141,6 +181,24 @@ async function initializeDatabase() {
         ('รายจ่ายอื่นๆ ⚙️', 'expense', 'fa-ellipsis-h', '#C3B1E1', 180, 'บันเทิง ภาษี & อื่นๆ ⚙️')
       `);
       console.log('✅ สร้างหมวดหมู่เริ่มต้นสำเร็จ');
+    } else {
+      // บังคับแก้ไขชื่อหมวดหมู่และหมวดหมู่หลักที่มีอีโมจิให้ถูกต้อง เผื่อกรณีข้อมูลเก่าเพี้ยน
+      await db.query("UPDATE categories SET name = 'ชาร์จไฟรถ EV ⚡' WHERE name LIKE 'ชาร์จไฟรถ EV%'");
+      await db.query("UPDATE categories SET name = 'เงินออม / กองทุน 💰' WHERE name LIKE 'เงินออม / กองทุน%'");
+      await db.query("UPDATE categories SET name = 'ประกัน / ประกันสังคม 🛡️' WHERE name LIKE 'ประกัน / ประกันสังคม%'");
+      await db.query("UPDATE categories SET name = 'ชำระบัตรเครดิต/สินเชื่อ 💳' WHERE name LIKE 'ชำระบัตรเครดิต/สินเชื่อ%'");
+      await db.query("UPDATE categories SET name = 'ภาษี 📝' WHERE name LIKE 'ภาษี%'");
+      await db.query("UPDATE categories SET name = 'รายจ่ายอื่นๆ ⚙️' WHERE name LIKE 'รายจ่ายอื่นๆ%'");
+
+      await db.query("UPDATE categories SET parent_category = 'รายรับหลัก 💼' WHERE parent_category LIKE 'รายรับหลัก%'");
+      await db.query("UPDATE categories SET parent_category = 'รายรับอื่นๆ 💸' WHERE parent_category LIKE 'รายรับอื่นๆ%'");
+      await db.query("UPDATE categories SET parent_category = 'ที่อยู่อาศัย & สาธารณูปโภค 🏠' WHERE parent_category LIKE 'ที่อยู่อาศัย%'");
+      await db.query("UPDATE categories SET parent_category = 'การเดินทาง & ยานพาหนะ 🚗' WHERE parent_category LIKE 'การเดินทาง%'");
+      await db.query("UPDATE categories SET parent_category = 'อาหาร & เครื่องดื่ม 🍔' WHERE parent_category LIKE 'อาหาร%'");
+      await db.query("UPDATE categories SET parent_category = 'ของใช้ & ครอบครัว 🏠' WHERE parent_category LIKE 'ของใช้%'");
+      await db.query("UPDATE categories SET parent_category = 'การเงิน การออม & ประกัน 💰' WHERE parent_category LIKE 'การเงิน%'");
+      await db.query("UPDATE categories SET parent_category = 'สุขภาพ & การศึกษา 🏥' WHERE parent_category LIKE 'สุขภาพ%'");
+      await db.query("UPDATE categories SET parent_category = 'บันเทิง ภาษี & อื่นๆ ⚙️' WHERE parent_category LIKE 'บันเทิง%'");
     }
 
   } catch (error) {
@@ -157,26 +215,50 @@ const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const evRoutes = require('./routes/ev');
 
-app.use(`${BASE}/api/auth`, authRoutes);
-app.use(`${BASE}/api/transactions`, transactionRoutes);
-app.use(`${BASE}/api/ev`, evRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/ev', evRoutes);
+
+// เส้นทางสำหรับ Debug ฐานข้อมูล (ชั่วคราว)
+app.get('/api/db-debug', async (req, res) => {
+  try {
+    const [users] = await db.query('SELECT id, username, display_name, avatar FROM users');
+    const [connectionCharset] = await db.query("SHOW VARIABLES LIKE 'character_set_connection'");
+    const [clientCharset] = await db.query("SHOW VARIABLES LIKE 'character_set_client'");
+    const [databaseCharset] = await db.query("SHOW VARIABLES LIKE 'character_set_database'");
+    const [serverCharset] = await db.query("SHOW VARIABLES LIKE 'character_set_server'");
+    
+    res.json({
+      success: true,
+      users: users,
+      charsets: {
+        connection: connectionCharset[0]?.Value,
+        client: clientCharset[0]?.Value,
+        database: databaseCharset[0]?.Value,
+        server: serverCharset[0]?.Value
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
 
 // เสิร์ฟหน้า login.html และ index.html ตามสิทธิ์การใช้งาน
-app.get(`${BASE}/login`, (req, res) => {
+app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-app.get(`${BASE}/`, (req, res) => {
+app.get('/', (req, res) => {
   if (!req.session.userId) {
-    return res.redirect(`${BASE}/login`);
+    const redirectPath = req.originalUrl.startsWith('/exapp') ? '/exapp/login' : '/login';
+    return res.redirect(redirectPath);
   }
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// Redirect root ไปยัง BASE_PATH (กรณีเข้า / แต่ app อยู่ที่ /ex)
-if (BASE) {
-  app.get('/', (req, res) => res.redirect(`${BASE}/`));
-}
 
 // เริ่มต้น Server
 app.listen(PORT, () => {
