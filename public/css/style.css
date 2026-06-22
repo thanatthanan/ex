@@ -515,13 +515,27 @@ header {
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 15px;
   margin-bottom: 20px;
   align-items: center;
   background-color: var(--card-bg);
   padding: 12px 20px;
   border-radius: 20px;
   border: 3px solid var(--border-color);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+  font-size: 0.95rem;
 }
 
 .filter-bar select, .filter-bar input {
@@ -965,16 +979,33 @@ footer {
 
   /* ปรับแถบเครื่องมือกองข้อมูลให้ยืดหยุ่น */
   .filter-bar {
-    padding: 10px 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px 12px;
     gap: 8px;
-    justify-content: space-between;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .filter-group select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .filter-label {
+    flex-shrink: 0;
   }
 
   .filter-bar select, .filter-bar input {
     padding: 6px 10px;
     font-size: 0.85rem;
     border-radius: 10px;
-    flex-grow: 1;
   }
 
   /* ปรับขนาดรายการเงิน */

@@ -238,10 +238,10 @@
             
             <!-- แถบเครื่องมือกรองรายการ -->
             <div class="filter-bar">
-              <div>
-                <i class="fa-solid fa-filter"></i> กรอง:
-              </div>
-              <div>
+              <div class="filter-group">
+                <div class="filter-label">
+                  <i class="fa-solid fa-filter"></i> กรอง:
+                </div>
                 <select id="filterMonth" onchange="fetchTransactions()">
                   <option value="1">มกราคม</option>
                   <option value="2">กุมภาพันธ์</option>
@@ -256,18 +256,14 @@
                   <option value="11">พฤศจิกายน</option>
                   <option value="12">ธันวาคม</option>
                 </select>
-              </div>
-              <div>
                 <select id="filterYear" onchange="fetchTransactions()">
                   <!-- เติมปีโดย JS -->
                 </select>
               </div>
-              <div>
+              <div class="filter-group secondary-filters">
                 <select id="filterUser" onchange="fetchTransactions()">
                   <!-- ดึงข้อมูลรายบุคคลโดย JS -->
                 </select>
-              </div>
-              <div>
                 <select id="filterPayment" onchange="fetchTransactions()">
                   <option value="all">วิธีชำระทั้งหมด 📂</option>
                   <option value="cash">เงินสด / โอนจ่าย 💵</option>
