@@ -1236,7 +1236,8 @@ function renderUnpaidCredits() {
     div.style.padding = '8px 12px';
     div.style.border = '2px solid var(--border-color)';
     div.style.borderRadius = '12px';
-    div.style.backgroundColor = '#FCFAF7';
+    div.style.backgroundColor = 'var(--input-bg)';
+    div.style.color = 'var(--text-color)';
     div.style.fontSize = '0.85rem';
     
     const formattedDate = new Date(t.transaction_date).toLocaleDateString('th-TH', {
