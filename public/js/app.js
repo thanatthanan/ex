@@ -1935,8 +1935,8 @@ function parseSlipText(text) {
 
   // 3. ดึงข้อมูลบันทึกช่วยจำจากผู้รับเงินโอน (Recipient)
   let memoText = '';
-  // ค้นหาคำระบุผู้รับโอนแทนการค้นหาผู้โอน เพื่อหลีกเลี่ยงการหยิบชื่อเจ้าของสลิปมาแสดง
-  const toReceiverMatch = cleanText.match(/(?:ไปที่|ผู้รับโอน|ผู้รับเงิน|เข้าบัญชี|โอนไปยัง|to|receiver)\D*([a-zA-Zก-๙\s\.\-0-9]+)/i);
+  // ค้นหาคำระบุผู้รับโอนแทนการค้นหาผู้โอน เพื่อหลีกเลี่ยงการหยิบชื่อเจ้าของสลิปมาแสดง และหลีกเลี่ยงการดึงเลขบัญชีผู้รับแทนชื่อ
+  const toReceiverMatch = cleanText.match(/(?:ไปที่|ผู้รับโอน|ผู้รับเงิน|เข้าบัญชี|โอนไปยัง|to|receiver)\s*(?:\([^)]*\))?\s*([a-zA-Zก-๙\s\.\-]+)/i);
   if (toReceiverMatch && toReceiverMatch[1]) {
     memoText = toReceiverMatch[1].trim().split('\n')[0].trim().substring(0, 30);
   }
