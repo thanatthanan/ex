@@ -1778,4 +1778,214 @@ function toggleEVRowDetails(button) {
   }
 }
 
+// === Slip OCR Scanner Functions ===
+
+// คลิกปุ่มเพื่อกระตุ้นให้ผู้ใช้อัปโหลดไฟล์รูปภาพสลิป
+function triggerSlipUpload() {
+  const inputEl = document.getElementById('slipUploadInput');
+  if (inputEl) {
+    inputEl.click();
+  }
+}
+
+// ประมวลผลเมื่อเลือกสลิปสำเร็จ
+function handleSlipUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const overlay = document.getElementById('ocrLoadingOverlay');
+  if (overlay) {
+    overlay.style.display = 'flex';
+  }
+
+  // รัน Tesseract OCR บนรูปภาพที่อัปโหลด (รองรับทั้งภาษาไทยและอังกฤษ)
+  Tesseract.recognize(
+    file,
+    'tha+eng',
+    {
+      logger: m => console.log('OCR progress:', m)
+    }
+  ).then(({ data: { text } }) => {
+    console.log('OCR Raw Output:\n', text);
+    parseSlipText(text);
+  }).catch(err => {
+    console.error('OCR Process Error:', err);
+    const lang = localStorage.getItem('lang') || 'th';
+    alert(lang === 'th' ? 'เกิดข้อผิดพลาดในการแสกนสลิป กรุณาลองใหม่อีกครั้งนะครับ' : 'Error scanning the slip. Please try again.');
+  }).finally(() => {
+    if (overlay) {
+      overlay.style.display = 'none';
+    }
+    // รีเซ็ตค่า Input เพื่อให้สามารถอัปโหลดไฟล์เดิมซ้ำเพื่อทดสอบใหม่ได้
+    event.target.value = '';
+  });
+}
+
+// ฟังก์ชันวิเคราะห์และดึงข้อมูลสลิป
+function parseSlipText(text) {
+  const cleanText = text.replace(/,/g, ''); // เอา comma ออกเพื่อไม่ให้กวนใจ Regex ตัวเลข
+  const lang = localStorage.getItem('lang') || 'th';
+
+  // 1. ดึงยอดเงิน (Amount)
+  const amountRegexes = [
+    /(?:จำนวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|amount|net|total)\D*(\d+\.\d{2})/i,
+    /(\d+\.\d{2})\s*(?:บาท|thb)/i,
+    /(?:โอน|จ่าย)\D*(\d+\.\d{2})/i,
+    /(\d+\.\d{2})/ // ดึงตัวเลขทศนิยมตัวแรกสุด (ถ้ามี)
+  ];
+  
+  let parsedAmount = null;
+  for (const regex of amountRegexes) {
+    const match = cleanText.match(regex);
+    if (match && match[1]) {
+      parsedAmount = parseFloat(match[1]);
+      if (parsedAmount > 0) break;
+    }
+  }
+
+  // 2. ดึงวันที่ทำรายการ (Date)
+  const thaiMonths = {
+    'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
+    'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11,
+    'มกราคม': 0, 'กุมภาพันธ์': 1, 'มีนาคม': 2, 'เมษายน': 3, 'พฤษภาคม': 4, 'มิถุนายน': 5,
+    'กรกฎาคม': 6, 'สิงหาคม': 7, 'กันยายน': 8, 'ตุลาคม': 9, 'พฤศจิกายน': 10, 'ธันวาคม': 11
+  };
+  
+  const engMonths = {
+    'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+    'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11,
+    'january': 0, 'february': 1, 'march': 2, 'april': 3, 'june': 5,
+    'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+  };
+
+  let parsedDate = null;
+  
+  // ลองดึงวันเดือนปีรูปแบบไทย เช่น 23 มิ.ย. 2569 หรือ 23 มิ.ย. 69
+  const thaiDateMatch = cleanText.match(/(\d{1,2})\s*([ก-๙\.]+)\s*(\d{2,4})/);
+  if (thaiDateMatch) {
+    const day = parseInt(thaiDateMatch[1]);
+    const monthStr = thaiDateMatch[2].replace(/\./g, '').trim();
+    let year = parseInt(thaiDateMatch[3]);
+    
+    let monthIndex = -1;
+    for (const key in thaiMonths) {
+      if (key.replace(/\./g, '') === monthStr || monthStr.includes(key.replace(/\./g, ''))) {
+        monthIndex = thaiMonths[key];
+        break;
+      }
+    }
+    
+    if (monthIndex !== -1) {
+      if (year > 2500) {
+        year -= 543;
+      } else if (year < 100) {
+        year += (year >= 43 ? 1957 : 2000); // แปลงพ.ศ. ย่อ หรือ ค.ศ. ย่อ
+      }
+      parsedDate = new Date(year, monthIndex, day);
+    }
+  }
+
+  // ลองดึงรูปแบบอังกฤษ เช่น 23 Jun 2026
+  if (!parsedDate) {
+    const engDateMatch = cleanText.match(/(\d{1,2})\s*([a-zA-Z]+)\s*(\d{4})/);
+    if (engDateMatch) {
+      const day = parseInt(engDateMatch[1]);
+      const monthStr = engDateMatch[2].toLowerCase();
+      const year = parseInt(engDateMatch[3]);
+      
+      let monthIndex = -1;
+      for (const key in engMonths) {
+        if (monthStr.startsWith(key)) {
+          monthIndex = engMonths[key];
+          break;
+        }
+      }
+      if (monthIndex !== -1) {
+        parsedDate = new Date(year, monthIndex, day);
+      }
+    }
+  }
+
+  // ลองดึงรูปแบบตัวเลข เช่น 23/06/2026 หรือ 23-06-2569
+  if (!parsedDate) {
+    const slashDateMatch = cleanText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if (slashDateMatch) {
+      const day = parseInt(slashDateMatch[1]);
+      const month = parseInt(slashDateMatch[2]) - 1;
+      let year = parseInt(slashDateMatch[3]);
+      if (year > 2500) year -= 543;
+      else if (year < 100) year += 2000;
+      parsedDate = new Date(year, month, day);
+    }
+  }
+
+  // 3. ดึงข้อมูลบันทึกช่วยจำและแนะนำหมวดหมู่เบื้องต้น
+  let memoText = '';
+  const toReceiverMatch = cleanText.match(/(?:เพื่อเข้าบัญชี|โอนไปยัง|ผู้รับโอน|โอนให้|นาย|นาง|นางสาว|บจก|บริษัท|to:?)\s*([a-zA-Zก-๙\s]+)/i);
+  if (toReceiverMatch && toReceiverMatch[1]) {
+    memoText = toReceiverMatch[1].trim().split('\n')[0].substring(0, 30); // เอาเฉพาะบรรทัดแรกและสั้นๆ
+  }
+
+  // กรอกข้อมูลเข้าฟอร์ม
+  if (parsedAmount) {
+    document.getElementById('amount').value = parsedAmount;
+  }
+  if (parsedDate && !isNaN(parsedDate.getTime())) {
+    const yyyy = parsedDate.getFullYear();
+    const mm = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsedDate.getDate()).padStart(2, '0');
+    document.getElementById('transactionDate').value = `${yyyy}-${mm}-${dd}`;
+  } else {
+    // ถ้าแปลงวันที่ไม่ได้ ให้ใช้วันนี้เป็นค่าเริ่มต้น
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('transactionDate').value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  if (memoText) {
+    document.getElementById('description').value = (lang === 'th' ? 'โอนให้ ' : 'Transfer to ') + memoText;
+    
+    // เดาหมวดหมู่ตามบันทึก
+    const lowerMemo = memoText.toLowerCase();
+    let guessedCategoryName = '';
+
+    if (lowerMemo.includes('ชาร์จ') || lowerMemo.includes('bolt') || lowerMemo.includes('ptt') || lowerMemo.includes('elex') || lowerMemo.includes('pea') || lowerMemo.includes('spark') || lowerMemo.includes('ev')) {
+      guessedCategoryName = 'ชาร์จไฟรถ EV ⚡';
+    } else if (lowerMemo.includes('น้ำมัน') || lowerMemo.includes('shell') || lowerMemo.includes('caltex') || lowerMemo.includes('esso') || lowerMemo.includes('bangchak')) {
+      guessedCategoryName = 'น้ำมันรถ';
+    } else if (lowerMemo.includes('อาหาร') || lowerMemo.includes('กิน') || lowerMemo.includes('ข้าว') || lowerMemo.includes('kfc') || lowerMemo.includes('mk') || lowerMemo.includes('food') || lowerMemo.includes('cafe') || lowerMemo.includes('7-eleven') || lowerMemo.includes('เซเว่น')) {
+      guessedCategoryName = 'ค่าอาหารและเครื่องดื่ม';
+    } else if (lowerMemo.includes('ไฟ') || lowerMemo.includes('ไฟฟ้า')) {
+      guessedCategoryName = 'ค่าไฟฟ้า';
+    } else if (lowerMemo.includes('น้ำ') || lowerMemo.includes('ประปา')) {
+      guessedCategoryName = 'ค่าน้ำประปา';
+    }
+
+    if (guessedCategoryName) {
+      const category = categoriesList.find(c => c.name === guessedCategoryName);
+      if (category) {
+        const searchInput = document.getElementById('categorySearchInput');
+        if (searchInput) {
+          const parentText = category.parent_category ? getCategoryName(category.parent_category) : (lang === 'th' ? 'หมวดหมู่หลัก' : 'Main Category');
+          searchInput.value = `${parentText} ➔ ${getCategoryName(category.name)}`;
+        }
+        const hiddenId = document.getElementById('categoryId');
+        if (hiddenId) {
+          hiddenId.value = category.id;
+        }
+        checkSelectedCategoryName(category.name);
+      }
+    }
+  }
+
+  // สรุปแจ้งเตือนให้ตรวจสอบ
+  const formattedTransDate = document.getElementById('transactionDate').value;
+  const alertMsg = lang === 'th'
+    ? `อ่านข้อมูลสลิปสำเร็จ! 🎉\n\n- ยอดเงิน: ${parsedAmount ? parsedAmount.toFixed(2) : '-'} บาท\n- วันที่: ${formattedTransDate}\n- รายละเอียด: ${document.getElementById('description').value || '-'}\n\nกรุณาตรวจสอบข้อมูลและหมวดหมู่ให้ถูกต้องก่อนกดบันทึกนะครับ`
+    : `Slip scanned successfully! 🎉\n\n- Amount: ${parsedAmount ? parsedAmount.toFixed(2) : '-'} THB\n- Date: ${formattedTransDate}\n- Details: ${document.getElementById('description').value || '-'}\n\nPlease verify all fields and category before saving.`;
+  alert(alertMsg);
+}
+
 

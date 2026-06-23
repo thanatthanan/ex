@@ -103,6 +103,10 @@ const translations = {
     ev_th_action: "การจัดการ",
     ev_btn_hide: "ซ่อนรายละเอียด",
     ev_btn_show: "ดูรายละเอียด",
+    // OCR Slip Scanner
+    btn_scan_slip: "สแกนสลิปโอนเงินอัตโนมัติ 📸",
+    ocr_loading: "กำลังวิเคราะห์ข้อมูลสลิป...",
+    ocr_loading_hint: "โปรดรอสักครู่ (ระบบประมวลผลบนมือถือโดยตรง)",
     // Change Password Modal
     modal_pw_title: "เปลี่ยนรหัสผ่านเข้าบ้าน 🔑",
     modal_pw_old: "รหัสผ่านเดิม",
@@ -267,6 +271,10 @@ const translations = {
     ev_th_action: "Action",
     ev_btn_hide: "Hide Details",
     ev_btn_show: "View Details",
+    // OCR Slip Scanner
+    btn_scan_slip: "Scan Bank Slip (OCR) 📸",
+    ocr_loading: "Analyzing bank slip...",
+    ocr_loading_hint: "Please wait (processing directly on your device)",
     // Change Password Modal
     modal_pw_title: "Change Password 🔑",
     modal_pw_old: "Current Password",
