@@ -1041,7 +1041,10 @@ function startEditTransaction(id) {
   document.getElementById('evEndBattery').value = t.end_battery !== null ? t.end_battery : '';
 
   // ปรับ UI ให้เป็นโหมดแก้ไข
-  document.querySelector('#transactions-tab .card-title').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการของฉัน`;
+  const formTitle = document.querySelector('#transactionFormCard .card-title');
+  if (formTitle) {
+    formTitle.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการของฉัน`;
+  }
   
   const submitBtn = document.querySelector('#transactionForm button[type="submit"]');
   submitBtn.innerHTML = `บันทึกการแก้ไข! ✏️`;
@@ -1068,7 +1071,10 @@ function cancelEditMode() {
   editTransactionId = null;
   editCreditStatus = 'none';
 
-  document.querySelector('#transactions-tab .card-title').innerHTML = `<i class="fa-solid fa-heart-circle-plus"></i> บันทึกรายการใหม่`;
+  const formTitle = document.querySelector('#transactionFormCard .card-title');
+  if (formTitle) {
+    formTitle.innerHTML = `<i class="fa-solid fa-heart-circle-plus"></i> บันทึกรายการใหม่`;
+  }
   
   const submitBtn = document.querySelector('#transactionForm button[type="submit"]');
   submitBtn.innerHTML = `บันทึกรายการเลย! ✨`;
