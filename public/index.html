@@ -404,6 +404,11 @@
           <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Lazay Later')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Lazay Later</button>
           <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Shopee Pay')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Shopee Pay</button>
         </div>
+        <!-- เลือกทั้งหมด -->
+        <div id="creditSelectAllRow" style="display: none; align-items: center; gap: 8px; margin-bottom: 12px; padding: 0 10px;">
+          <input type="checkbox" id="selectAllCreditCheckbox" onchange="toggleSelectAllCredit(this)" style="width: 18px; height: 18px; cursor: pointer;">
+          <label for="selectAllCreditCheckbox" style="font-size: 0.85rem; font-weight: 500; cursor: pointer;" data-i18n="credit_select_all">เลือกทั้งหมด</label>
+        </div>
         <div id="unpaidCreditList" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; padding-right: 5px;">
           <!-- โหลดโดย JS -->
         </div>

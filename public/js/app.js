@@ -1438,7 +1438,18 @@ function renderUnpaidCredits() {
       </div>
     `;
     actionArea.style.display = 'none';
+    const selectAllRow = document.getElementById('creditSelectAllRow');
+    if (selectAllRow) selectAllRow.style.display = 'none';
     return;
+  }
+  
+  const selectAllRow = document.getElementById('creditSelectAllRow');
+  if (selectAllRow) {
+    selectAllRow.style.display = 'flex';
+  }
+  const selectAllCheckbox = document.getElementById('selectAllCreditCheckbox');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = false;
   }
   
   filtered.forEach(t => {
@@ -1496,14 +1507,29 @@ function setCreditCardFilter(cardName) {
 
 // อัปเดตยอดรวมชำระที่เลือกติ๊กกล่อง
 function updateSelectedCreditAmount() {
-  const checkboxes = document.querySelectorAll('.credit-checkbox:checked');
+  const allCheckboxes = document.querySelectorAll('.credit-checkbox');
+  const checkedCheckboxes = document.querySelectorAll('.credit-checkbox:checked');
   let selectedSum = 0;
-  checkboxes.forEach(cb => {
+  checkedCheckboxes.forEach(cb => {
     selectedSum += parseFloat(cb.getAttribute('data-amount') || 0);
   });
   const lang = localStorage.getItem('lang') || 'th';
   const currency = lang === 'th' ? ' ฿' : ' THB';
   document.getElementById('selectedCreditAmount').textContent = `${selectedSum.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })}${currency}`;
+
+  const selectAllCheckbox = document.getElementById('selectAllCreditCheckbox');
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
+  }
+}
+
+// เลือกทั้งหมด / ยกเลิกการเลือกทั้งหมด
+function toggleSelectAllCredit(masterCheckbox) {
+  const checkboxes = document.querySelectorAll('.credit-checkbox');
+  checkboxes.forEach(cb => {
+    cb.checked = masterCheckbox.checked;
+  });
+  updateSelectedCreditAmount();
 }
 
 // ชำระยอดหนี้ที่เลือก (ส่งไปยัง API หักยอดเงินสดจริงในบัญชี)
