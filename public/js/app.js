@@ -12,6 +12,27 @@ let unpaidTransactionsList = [];
 let activeCreditCardFilter = 'all';
 let currentEVLogs = [];
 
+// Theme functions
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.classList.toggle('dark-mode');
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  updateThemeIcon(isDark);
+
+  // Re-render charts to update text/line colors if analytics tab is active
+  const analyticsTab = document.getElementById('analytics-tab');
+  if (analyticsTab && analyticsTab.classList.contains('active')) {
+    renderAnalyticsCharts();
+  }
+}
+
+function updateThemeIcon(isDark) {
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) {
+    btn.innerHTML = isDark ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+  }
+}
+
 // ไอคอนอวตารน่ารักๆ
 const avatarMap = {
   'dad': '👨',
@@ -22,6 +43,9 @@ const avatarMap = {
 
 // เมื่อหน้าเว็บโหลดเสร็จ
 window.onload = async () => {
+  // Initialize Theme Icon
+  updateThemeIcon(document.documentElement.classList.contains('dark-mode'));
+
   // 1. ตรวจสอบการล็อกอิน
   const isLoggedIn = await checkAuth();
   if (!isLoggedIn) return;
@@ -707,6 +731,13 @@ async function renderAnalyticsCharts() {
   const year = document.getElementById('filterYear').value;
   const userId = document.getElementById('filterUser').value;
 
+  // อ่านสีธีมปัจจุบันจาก CSS Variables
+  const bodyStyle = getComputedStyle(document.body);
+  const textColor = bodyStyle.getPropertyValue('--text-color').trim() || '#4A3E3D';
+  const textMuted = bodyStyle.getPropertyValue('--text-muted').trim() || '#8E7C77';
+  const cardBg = bodyStyle.getPropertyValue('--card-bg').trim() || '#FFFFFF';
+  const borderColor = bodyStyle.getPropertyValue('--border-color').trim() || '#F3ECE3';
+
   try {
     let url = `${basePath}/api/transactions?month=${month}&year=${year}`;
     if (userId) url += `&user_id=${userId}`;
@@ -754,10 +785,18 @@ async function renderAnalyticsCharts() {
             labels: ['ไม่มีข้อมูลรายจ่าย'],
             datasets: [{
               data: [1],
-              backgroundColor: ['#F3ECE3']
+              backgroundColor: [borderColor]
             }]
           },
-          options: { responsive: true, maintainAspectRatio: false }
+          options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: textMuted, font: { family: 'Kanit' } }
+              }
+            }
+          }
         });
       } else {
         categoryChartInstance = new Chart(pieCtx, {
@@ -768,7 +807,7 @@ async function renderAnalyticsCharts() {
               data: values,
               backgroundColor: colors,
               borderWidth: 2,
-              borderColor: '#FFFFFF'
+              borderColor: cardBg
             }]
           },
           options: {
@@ -777,7 +816,7 @@ async function renderAnalyticsCharts() {
             plugins: {
               legend: {
                 position: 'bottom',
-                labels: { font: { family: 'Kanit' } }
+                labels: { color: textColor, font: { family: 'Kanit' } }
               }
             }
           }
@@ -809,10 +848,12 @@ async function renderAnalyticsCharts() {
           scales: {
             y: {
               beginAtZero: true,
-              ticks: { font: { family: 'Kanit' } }
+              ticks: { color: textColor, font: { family: 'Kanit' } },
+              grid: { color: borderColor }
             },
             x: {
-              ticks: { font: { family: 'Kanit' } }
+              ticks: { color: textColor, font: { family: 'Kanit' } },
+              grid: { color: borderColor }
             }
           }
         }

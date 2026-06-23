@@ -17,6 +17,29 @@
   --ev-bg: #E8F1F5;
   --font-main: 'Kanit', sans-serif;
   --font-title: 'Mitr', sans-serif;
+  --input-bg: #FCFAF7;
+  --input-focus-bg: #FFFFFF;
+  --shadow-color: rgba(142, 124, 119, 0.15);
+}
+
+:root.dark-mode {
+  --bg-color: #1F1918;
+  --card-bg: #2C2221;
+  --text-color: #F3EBE9;
+  --text-muted: #AF9E9B;
+  --border-color: #3F3230;
+  --primary-color: #FFAAA6;
+  --primary-hover: #FF9B97;
+  --secondary-color: #A3DFCA;
+  --income-color: #55B5B4;
+  --income-bg: #243E3D;
+  --expense-color: #FF7B84;
+  --expense-bg: #412628;
+  --ev-color: #89B3C1;
+  --ev-bg: #2A3C45;
+  --input-bg: #261D1C;
+  --input-focus-bg: #2F2423;
+  --shadow-color: rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -383,13 +406,13 @@ header {
   font-family: var(--font-main);
   font-size: 0.95rem;
   color: var(--text-color);
-  background-color: #FCFAF7;
+  background-color: var(--input-bg);
 }
 
 .form-control:focus {
   outline: none;
   border-color: var(--primary-color);
-  background-color: #FFFFFF;
+  background-color: var(--input-focus-bg);
 }
 
 /* Type Selector Buttons (Income/Expense toggle) */
@@ -408,7 +431,7 @@ header {
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  background-color: #FFFFFF;
+  background-color: var(--card-bg);
   text-align: center;
 }
 
@@ -548,7 +571,7 @@ header {
   border: 2px solid var(--border-color);
   border-radius: 12px;
   font-family: var(--font-main);
-  background-color: #FCFAF7;
+  background-color: var(--input-bg);
 }
 
 /* Transaction List */
@@ -1343,7 +1366,7 @@ footer {
 }
 
 .modal-content {
-  background-color: #FFFFFF;
+  background-color: var(--card-bg);
   padding: 30px;
   border-radius: 24px;
   width: 90%;
@@ -1496,6 +1519,31 @@ footer {
   text-align: center;
   color: var(--text-muted);
   font-size: 0.85rem;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  background-color: var(--input-bg);
+  border: 2px solid var(--border-color);
+  color: var(--text-color);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 4px 0px var(--border-color);
+}
+.theme-toggle-btn:hover {
+  background-color: var(--border-color);
+  transform: translateY(-2px);
+}
+.theme-toggle-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
 }
 
 

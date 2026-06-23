@@ -9,8 +9,16 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Chart.js CDN สำหรับกราฟวิเคราะห์ -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark-mode');
+      }
+    })();
+  </script>
 </head>
-<body>
+<body class="light-theme">
 
   <!-- Navigation Header -->
   <header>
@@ -18,18 +26,25 @@
       <i class="fa-solid fa-house-chimney-heart"></i>
       ex<span>pense</span>
     </div>
-    <div class="user-profile-dropdown-container">
-      <div class="user-profile-header" id="userProfileTrigger" onclick="toggleProfileDropdown(event)">
-        <div class="user-avatar" id="headerAvatar">👨</div>
-        <div class="user-info-text">
-          <span class="user-name" id="headerDisplayName">คุณพ่อ</span>
-          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+    <div style="display: flex; align-items: center; gap: 15px;">
+      <!-- Toggle Dark Mode Button -->
+      <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn" title="เปลี่ยนธีม 🌓">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+
+      <div class="user-profile-dropdown-container">
+        <div class="user-profile-header" id="userProfileTrigger" onclick="toggleProfileDropdown(event)">
+          <div class="user-avatar" id="headerAvatar">👨</div>
+          <div class="user-info-text">
+            <span class="user-name" id="headerDisplayName">คุณพ่อ</span>
+            <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+          </div>
         </div>
-      </div>
-      <div class="profile-dropdown-menu" id="profileDropdownMenu">
-        <button class="dropdown-item" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> เปลี่ยนรหัส</button>
-        <div class="dropdown-divider"></div>
-        <button class="dropdown-item logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+        <div class="profile-dropdown-menu" id="profileDropdownMenu">
+          <button class="dropdown-item" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> เปลี่ยนรหัส</button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+        </div>
       </div>
     </div>
   </header>
