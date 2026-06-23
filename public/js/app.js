@@ -12,6 +12,119 @@ let unpaidTransactionsList = [];
 let activeCreditCardFilter = 'all';
 let currentEVLogs = [];
 
+let currentLang = localStorage.getItem('lang') || 'th';
+
+const monthNames = {
+  th: ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"],
+  en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+};
+
+function toggleLang() {
+  const nextLang = currentLang === 'th' ? 'en' : 'th';
+  currentLang = nextLang;
+  document.documentElement.setAttribute('lang', nextLang);
+  localStorage.setItem('lang', nextLang);
+  applyLanguage(nextLang);
+  
+  // Re-fetch/render to update lists, stats, and filters
+  setupFilters();
+  fetchTransactions();
+  fetchEVStatistics();
+  fetchUnpaidCredits();
+  
+  // Update header and dropdown if user is logged in
+  if (currentUser) {
+    document.getElementById('headerDisplayName').textContent = getUserDisplayName(currentUser);
+    fetchFamilyMembers(); // updates family filter display names
+  }
+
+  // Re-render charts
+  const analyticsTab = document.getElementById('analytics-tab');
+  if (analyticsTab && analyticsTab.classList.contains('active')) {
+    renderAnalyticsCharts();
+  }
+}
+
+function applyLanguage(lang) {
+  // Update toggle button text
+  const langBtn = document.getElementById('langToggleBtn');
+  if (langBtn) {
+    langBtn.textContent = lang === 'th' ? 'EN' : 'TH';
+  }
+
+  // Update month filter select texts
+  const filterMonthSelect = document.getElementById('filterMonth');
+  if (filterMonthSelect) {
+    const currentVal = filterMonthSelect.value;
+    filterMonthSelect.innerHTML = '';
+    const months = lang === 'th' ? monthNames.th : monthNames.en;
+    months.forEach((name, index) => {
+      const option = document.createElement('option');
+      option.value = index + 1;
+      option.textContent = name;
+      if (String(index + 1) === currentVal) option.selected = true;
+      filterMonthSelect.appendChild(option);
+    });
+  }
+
+  // Translate all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (translations[lang] && translations[lang][key]) {
+      if (key === 'logo_span') {
+        el.innerHTML = translations[lang][key];
+      } else {
+        el.textContent = translations[lang][key];
+      }
+    }
+  });
+
+  // Translate data-i18n-placeholder elements
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (translations[lang] && translations[lang][key]) {
+      el.setAttribute('placeholder', translations[lang][key]);
+    }
+  });
+
+  // Update change password modal input placeholders
+  const oldPassword = document.getElementById('oldPassword');
+  if (oldPassword) {
+    oldPassword.setAttribute('placeholder', lang === 'th' ? 'กรอกรหัสผ่านเดิม...' : 'Enter current password...');
+  }
+  const newPassword = document.getElementById('newPassword');
+  if (newPassword) {
+    newPassword.setAttribute('placeholder', lang === 'th' ? 'กรอกรหัสผ่านใหม่...' : 'Enter new password...');
+  }
+  const confirmNewPassword = document.getElementById('confirmNewPassword');
+  if (confirmNewPassword) {
+    confirmNewPassword.setAttribute('placeholder', lang === 'th' ? 'กรอกรหัสผ่านใหม่อีกครั้ง...' : 'Confirm new password...');
+  }
+}
+
+function getCategoryName(catName) {
+  const lang = localStorage.getItem('lang') || 'th';
+  if (lang === 'en' && categoryTranslations.en && categoryTranslations.en[catName]) {
+    return categoryTranslations.en[catName];
+  }
+  return catName;
+}
+
+function getUserDisplayName(user) {
+  if (!user) return '';
+  const lang = localStorage.getItem('lang') || 'th';
+  if (user.username === 'dad' && translations[lang].login_dad) {
+    return translations[lang].login_dad;
+  }
+  if (user.username === 'mom' && translations[lang].login_mom) {
+    return translations[lang].login_mom;
+  }
+  if (user.username === 'kid' && translations[lang].login_kid) {
+    return translations[lang].login_kid;
+  }
+  return user.displayName || user.display_name;
+}
+
 // Theme functions
 function toggleTheme() {
   const html = document.documentElement;
@@ -46,6 +159,9 @@ window.onload = async () => {
   // Initialize Theme Icon
   updateThemeIcon(document.documentElement.classList.contains('dark-mode'));
 
+  // Initialize Language UI
+  applyLanguage(currentLang);
+
   // 1. ตรวจสอบการล็อกอิน
   const isLoggedIn = await checkAuth();
   if (!isLoggedIn) return;
@@ -72,6 +188,9 @@ window.onload = async () => {
   if (window.innerWidth <= 600) {
     switchTab('form-tab');
   }
+
+  // Re-apply language to translate dynamic values loaded from filters and categories
+  applyLanguage(currentLang);
 };
 
 // เช็คล็อกอิน
@@ -86,7 +205,7 @@ async function checkAuth() {
       } else {
         document.getElementById('headerAvatar').textContent = avatarMap[currentUser.avatar] || '🏠';
       }
-      document.getElementById('headerDisplayName').textContent = currentUser.displayName;
+      document.getElementById('headerDisplayName').textContent = getUserDisplayName(currentUser);
       return true;
     } else {
       window.location.href = basePath + '/login';
@@ -121,17 +240,26 @@ function setupFilters() {
   const currentYear = today.getFullYear();
 
   // ตั้งค่าเดือน
-  document.getElementById('filterMonth').value = currentMonth;
+  const filterMonthSelect = document.getElementById('filterMonth');
+  if (filterMonthSelect) {
+    if (!filterMonthSelect.value) {
+      filterMonthSelect.value = currentMonth;
+    }
+  }
 
   // ตั้งค่าปี (ย้อนหลัง 2 ปี และไปข้างหน้า 1 ปี)
   const filterYearSelect = document.getElementById('filterYear');
-  filterYearSelect.innerHTML = '';
-  for (let y = currentYear - 2; y <= currentYear + 1; y++) {
-    const option = document.createElement('option');
-    option.value = y;
-    option.textContent = y + 543; // แปลงเป็น พ.ศ. แสดงน่ารักๆ
-    if (y === currentYear) option.selected = true;
-    filterYearSelect.appendChild(option);
+  if (filterYearSelect) {
+    const selectedYear = filterYearSelect.value ? parseInt(filterYearSelect.value) : currentYear;
+    filterYearSelect.innerHTML = '';
+    const lang = localStorage.getItem('lang') || 'th';
+    for (let y = currentYear - 2; y <= currentYear + 1; y++) {
+      const option = document.createElement('option');
+      option.value = y;
+      option.textContent = lang === 'th' ? y + 543 : y; // แปลงเป็น พ.ศ. หรือ ค.ศ.
+      if (y === selectedYear) option.selected = true;
+      filterYearSelect.appendChild(option);
+    }
   }
 }
 
@@ -163,7 +291,7 @@ async function fetchFamilyMembers() {
         const avatarEmoji = (user.avatar && (user.avatar.startsWith('http://') || user.avatar.startsWith('https://'))) 
           ? '🖼️' 
           : (avatarMap[user.avatar] || '👤');
-        option.textContent = `${avatarEmoji} ${user.display_name}`;
+        option.textContent = `${avatarEmoji} ${getUserDisplayName(user)}`;
         userFilter.appendChild(option);
       });
       // ตั้งค่าเริ่มต้นของตัวกรองให้ตรงกับผู้ใช้งานที่ล็อกอินอยู่
@@ -223,8 +351,16 @@ function filterCategorySuggestions() {
   const query = searchInput.value.toLowerCase().trim();
   const filtered = categoriesList.filter(c => {
     if (c.type !== activeTransactionType) return false;
-    const nameMatch = c.name.toLowerCase().includes(query);
-    const parentMatch = c.parent_category ? c.parent_category.toLowerCase().includes(query) : false;
+    
+    const translatedName = getCategoryName(c.name).toLowerCase();
+    const originalName = c.name.toLowerCase();
+    
+    const translatedParent = c.parent_category ? getCategoryName(c.parent_category).toLowerCase() : '';
+    const originalParent = c.parent_category ? c.parent_category.toLowerCase() : '';
+    
+    const nameMatch = originalName.includes(query) || translatedName.includes(query);
+    const parentMatch = originalParent.includes(query) || translatedParent.includes(query);
+    
     return nameMatch || parentMatch;
   });
   
@@ -238,8 +374,10 @@ function renderCategorySuggestions(list) {
   
   suggestionsBox.innerHTML = '';
   
+  const lang = localStorage.getItem('lang') || 'th';
   if (list.length === 0) {
-    suggestionsBox.innerHTML = '<div class="no-suggestions">❌ ไม่พบหมวดหมู่ที่ต้องการ</div>';
+    const noCatText = lang === 'th' ? '❌ ไม่พบหมวดหมู่ที่ต้องการ' : '❌ No categories found';
+    suggestionsBox.innerHTML = `<div class="no-suggestions">${noCatText}</div>`;
     return;
   }
   
@@ -252,13 +390,16 @@ function renderCategorySuggestions(list) {
     const iconColor = cat.color || '#888888';
     const iconClass = cat.icon || 'fa-question';
     
+    const translatedParent = cat.parent_category ? getCategoryName(cat.parent_category) : (lang === 'th' ? 'หมวดหมู่ทั่วไป' : 'General Category');
+    const translatedName = getCategoryName(cat.name);
+    
     item.innerHTML = `
       <div class="suggestion-icon" style="background-color: ${iconBgColor}; color: ${iconColor};">
         <i class="fa-solid ${iconClass}"></i>
       </div>
       <div class="suggestion-text">
-        <span class="suggestion-parent">${cat.parent_category || 'หมวดหมู่ทั่วไป'}</span>
-        <span class="suggestion-name">${cat.name}</span>
+        <span class="suggestion-parent">${translatedParent}</span>
+        <span class="suggestion-name">${translatedName}</span>
       </div>
     `;
     
@@ -293,7 +434,9 @@ function selectCategory(cat) {
   const container = document.querySelector('.category-search-container');
   
   if (searchInput && categoryId) {
-    searchInput.value = `${cat.parent_category || 'หมวดหมู่หลัก'} ➔ ${cat.name}`;
+    const lang = localStorage.getItem('lang') || 'th';
+    const parentText = cat.parent_category ? getCategoryName(cat.parent_category) : (lang === 'th' ? 'หมวดหมู่หลัก' : 'Main Category');
+    searchInput.value = `${parentText} ➔ ${getCategoryName(cat.name)}`;
     categoryId.value = cat.id;
   }
   
@@ -393,8 +536,10 @@ function checkSelectedCategoryName(selectedText) {
     return;
   }
 
+  const lowerText = selectedText.toLowerCase();
+
   // ตรวจจับคีย์เวิร์ดเช่น 'EV' หรือ 'ชาร์จไฟ'
-  if (selectedText.includes('EV') || selectedText.includes('ชาร์จไฟ')) {
+  if (lowerText.includes('ev') || lowerText.includes('ชาร์จไฟ') || lowerText.includes('ชาร์จรถ')) {
     if (evSection) {
       evSection.classList.add('show');
       updateEVDescription();
@@ -405,7 +550,7 @@ function checkSelectedCategoryName(selectedText) {
 
   // ตรวจจับหมวดหมู่อาหาร
   if (mealGroup) {
-    if (selectedText.includes('อาหาร') || selectedText.includes('เครื่องดื่ม')) {
+    if (lowerText.includes('อาหาร') || lowerText.includes('เครื่องดื่ม') || lowerText.includes('food') || lowerText.includes('drink')) {
       mealGroup.style.display = 'block';
     } else {
       mealGroup.style.display = 'none';
@@ -414,7 +559,7 @@ function checkSelectedCategoryName(selectedText) {
 
   // ตรวจจับหมวดหมู่ให้ครอบครัว
   if (recipientGroup) {
-    if (selectedText.includes('ให้ครอบครัว') || selectedText.includes('คนในบ้าน')) {
+    if (lowerText.includes('ให้ครอบครัว') || lowerText.includes('คนในบ้าน') || lowerText.includes('family') || lowerText.includes('allowance')) {
       recipientGroup.style.display = 'block';
     } else {
       recipientGroup.style.display = 'none';
@@ -464,11 +609,14 @@ function renderTransactions(transactions) {
   const listContainer = document.getElementById('transactionsList');
   listContainer.innerHTML = '';
 
+  const lang = localStorage.getItem('lang') || 'th';
+
   if (transactions.length === 0) {
+    const noRecs = lang === 'th' ? 'เดือนนี้ยังไม่มีบันทึกเงินเลยจ้า' : 'No transactions recorded this month.';
     listContainer.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 30px;">
         <i class="fa-solid fa-cookie-bite" style="font-size: 2.5rem; margin-bottom: 10px; color: #EADBC8;"></i>
-        <p>เดือนนี้ยังไม่มีบันทึกเงินเลยจ้า</p>
+        <p>${noRecs}</p>
       </div>
     `;
     return;
@@ -479,7 +627,7 @@ function renderTransactions(transactions) {
     item.className = 'transaction-item';
 
     const isEV = t.station_name || t.charger_power || t.energy_delivered;
-    const formattedDate = new Date(t.transaction_date).toLocaleDateString('th-TH', {
+    const formattedDate = new Date(t.transaction_date).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
       day: 'numeric',
       month: 'short'
     });
@@ -491,21 +639,36 @@ function renderTransactions(transactions) {
     if (t.payment_method === 'credit') {
       const cardSuffix = t.credit_card_name ? ` (${t.credit_card_name})` : '';
       if (t.credit_status === 'unpaid') {
-        badgeHTML += `<span class="ev-badge" style="background-color: #FFF2E2; color: #E29734; border-color: #E29734;"><i class="fa-solid fa-credit-card"></i> ค้างจ่าย${cardSuffix} 💳</span>`;
+        const unpaidText = lang === 'th' ? 'ค้างจ่าย' : 'Unpaid';
+        badgeHTML += `<span class="ev-badge" style="background-color: #FFF2E2; color: #E29734; border-color: #E29734;"><i class="fa-solid fa-credit-card"></i> ${unpaidText}${cardSuffix} 💳</span>`;
       } else if (t.credit_status === 'paid') {
-        badgeHTML += `<span class="ev-badge" style="background-color: var(--income-bg); color: var(--income-color); border-color: var(--income-color);"><i class="fa-solid fa-circle-check"></i> จ่ายแล้ว${cardSuffix} ✅</span>`;
+        const paidText = lang === 'th' ? 'จ่ายแล้ว' : 'Paid';
+        badgeHTML += `<span class="ev-badge" style="background-color: var(--income-bg); color: var(--income-color); border-color: var(--income-color);"><i class="fa-solid fa-circle-check"></i> ${paidText}${cardSuffix} ✅</span>`;
       }
     }
     if (t.meal_type) {
+      const mealKeys = { 'เช้า': 'meal_breakfast', 'กลางวัน': 'meal_lunch', 'เย็น': 'meal_dinner', 'ดึก': 'meal_night' };
+      const mealKey = mealKeys[t.meal_type];
+      const translatedMeal = mealKey ? translations[lang][mealKey] : t.meal_type;
+      const mealLabel = lang === 'th' ? 'มื้อ' : 'Meal: ';
       const mealIcons = { 'เช้า': '🌅', 'กลางวัน': '☀️', 'เย็น': '🌇', 'ดึก': '🌙' };
       const icon = mealIcons[t.meal_type] || '🍴';
-      badgeHTML += `<span class="ev-badge" style="background-color: #E8F5E9; color: #2E7D32; border-color: #2E7D32;"><i class="fa-solid fa-utensils"></i> มื้อ${t.meal_type} ${icon}</span>`;
+      badgeHTML += `<span class="ev-badge" style="background-color: #E8F5E9; color: #2E7D32; border-color: #2E7D32;"><i class="fa-solid fa-utensils"></i> ${mealLabel}${translatedMeal} ${icon}</span>`;
     }
     if (t.recipient) {
+      const recipientKeys = { 'ย่า': 'rec_grandma', 'แม่': 'rec_mom', 'ลูก': 'rec_kid', 'ญาติ': 'rec_relatives' };
+      const recKey = recipientKeys[t.recipient];
+      const translatedRec = recKey ? translations[lang][recKey] : t.recipient;
+      const giveLabel = lang === 'th' ? 'ให้' : 'Give to ';
       const recipientIcons = { 'ย่า': '👵', 'แม่': '👩', 'ลูก': '👦', 'ญาติ': '👥' };
       const icon = recipientIcons[t.recipient] || '👤';
-      badgeHTML += `<span class="ev-badge" style="background-color: #F3E5F5; color: #7B1FA2; border-color: #7B1FA2;"><i class="fa-solid fa-heart"></i> ให้${t.recipient} ${icon}</span>`;
+      badgeHTML += `<span class="ev-badge" style="background-color: #F3E5F5; color: #7B1FA2; border-color: #7B1FA2;"><i class="fa-solid fa-heart"></i> ${giveLabel}${translatedRec} ${icon}</span>`;
     }
+
+    const editTitle = lang === 'th' ? 'แก้ไขรายการนี้' : 'Edit';
+    const deleteTitle = lang === 'th' ? 'ลบรายการนี้' : 'Delete';
+    const noDesc = lang === 'th' ? 'ไม่มีคำอธิบาย' : 'No description';
+    const displayUser = getUserDisplayName({ username: t.avatar, displayName: t.display_name, display_name: t.display_name });
 
     item.innerHTML = `
       <div class="item-left">
@@ -514,24 +677,24 @@ function renderTransactions(transactions) {
         </div>
         <div class="item-details">
           <h4>
-            ${t.category_name}
+            ${getCategoryName(t.category_name)}
             ${badgeHTML}
           </h4>
-          <p>${formattedDate} • ${t.description || 'ไม่มีคำอธิบาย'}</p>
+          <p>${formattedDate} • ${t.description || noDesc}</p>
           <div class="item-badge-user">
             <span>${t.avatar && (t.avatar.startsWith('http://') || t.avatar.startsWith('https://')) ? `<img src="${t.avatar}" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover; vertical-align: middle; margin-right: 4px;" alt="avatar">` : (avatarMap[t.avatar] || '👤')}</span>
-            <span>${t.display_name}</span>
+            <span>${displayUser}</span>
           </div>
         </div>
       </div>
       <div class="item-right">
         <span class="item-amount ${t.type}">
-          ${t.type === 'income' ? '+' : '-'}${parseFloat(t.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿
+          ${t.type === 'income' ? '+' : '-'}${parseFloat(t.amount).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })} ${lang === 'th' ? '฿' : 'THB'}
         </span>
-        <button class="btn-delete" onclick="startEditTransaction(${t.id})" title="แก้ไขรายการนี้" style="color: var(--ev-color); margin-right: 5px;">
+        <button class="btn-delete" onclick="startEditTransaction(${t.id})" title="${editTitle}" style="color: var(--ev-color); margin-right: 5px;">
           <i class="fa-solid fa-pen-to-square"></i>
         </button>
-        <button class="btn-delete" onclick="deleteTransaction(${t.id})" title="ลบรายการนี้">
+        <button class="btn-delete" onclick="deleteTransaction(${t.id})" title="${deleteTitle}">
           <i class="fa-solid fa-trash-can"></i>
         </button>
       </div>
@@ -662,17 +825,20 @@ async function saveTransaction(event) {
       // อัปเดตตารางและยอดเงินเงียบๆ โดยไม่มี popup กวนใจ
       await fetchTransactions();
     } else {
-      alert(data.message || 'บันทึกข้อมูลไม่สำเร็จ');
+      const lang = localStorage.getItem('lang') || 'th';
+      alert(data.message || translations[lang].alert_save_failed);
     }
   } catch (error) {
     console.error(error);
-    alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    const lang = localStorage.getItem('lang') || 'th';
+    alert(translations[lang].alert_conn_error);
   }
 }
 
 // ลบธุรกรรมการเงิน
 async function deleteTransaction(id) {
-  if (!confirm('แน่ใจนะว่าจะลบรายการนี้? 🥺')) return;
+  const lang = localStorage.getItem('lang') || 'th';
+  if (!confirm(translations[lang].alert_delete_confirm)) return;
 
   try {
     const res = await fetch(`${basePath}/api/transactions/${id}`, {
@@ -683,11 +849,11 @@ async function deleteTransaction(id) {
       await fetchTransactions();
       await fetchEVStatistics();
     } else {
-      alert(data.message || 'ลบไม่สำเร็จ');
+      alert(data.message || translations[lang].alert_delete_failed);
     }
   } catch (error) {
     console.error(error);
-    alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    alert(translations[lang].alert_conn_failed);
   }
 }
 
@@ -773,7 +939,8 @@ async function renderAnalyticsCharts() {
       const pieCtx = document.getElementById('categoryChart').getContext('2d');
       if (categoryChartInstance) categoryChartInstance.destroy();
 
-      const labels = Object.keys(expenseMap);
+      const lang = localStorage.getItem('lang') || 'th';
+      const labels = Object.keys(expenseMap).map(name => getCategoryName(name));
       const values = Object.values(expenseMap);
       const colors = Object.values(expenseColors);
 
@@ -782,7 +949,7 @@ async function renderAnalyticsCharts() {
         categoryChartInstance = new Chart(pieCtx, {
           type: 'doughnut',
           data: {
-            labels: ['ไม่มีข้อมูลรายจ่าย'],
+            labels: [lang === 'th' ? 'ไม่มีข้อมูลรายจ่าย' : 'No expense data'],
             datasets: [{
               data: [1],
               backgroundColor: [borderColor]
@@ -830,9 +997,12 @@ async function renderAnalyticsCharts() {
       comparisonChartInstance = new Chart(barCtx, {
         type: 'bar',
         data: {
-          labels: ['รายรับ 💰', 'รายจ่าย 💸'],
+          labels: [
+            lang === 'th' ? translations.th.chart_label_income : translations.en.chart_label_income,
+            lang === 'th' ? translations.th.chart_label_expense : translations.en.chart_label_expense
+          ],
           datasets: [{
-            label: 'ยอดรวมประจำเดือน (บาท)',
+            label: lang === 'th' ? translations.th.chart_dataset_label : translations.en.chart_dataset_label,
             data: [totalIncome, totalExpense],
             backgroundColor: ['#61C0BF', '#FF8B94'],
             borderRadius: 12,
@@ -875,23 +1045,29 @@ async function fetchEVStatistics() {
       const logs = data.logs;
       currentEVLogs = logs;
 
+      const lang = localStorage.getItem('lang') || 'th';
+      const currency = lang === 'th' ? ' ฿' : ' THB';
+      const noComp = lang === 'th' ? 'ไม่มีข้อมูลเปรียบเทียบ' : 'No comparative data';
+      const minRecords = lang === 'th' ? 'สะสมขั้นต่ำ 2 ครั้ง' : 'Min. 2 records';
+
       // อัปเดตการ์ดสถิติ EV
-      document.getElementById('evTotalCost').textContent = `${parseFloat(stats.totalCost).toLocaleString('th-TH')} ฿`;
-      document.getElementById('evTotalKWh').textContent = `${parseFloat(stats.totalKWh).toLocaleString('th-TH')} kWh`;
-      document.getElementById('evAvgCostPerKWh').textContent = `${stats.costPerKWh} ฿`;
-      document.getElementById('evCostPerKm').textContent = stats.totalDistance > 0 ? `${stats.costPerKm} ฿` : 'ไม่มีข้อมูลเปรียบเทียบ';
-      document.getElementById('evAvgEfficiency').textContent = stats.totalDistance > 0 ? `${stats.kmPerKWh} km/kWh` : 'ไม่มีข้อมูลเปรียบเทียบ';
-      document.getElementById('evTotalDistance').textContent = stats.totalDistance > 0 ? `${stats.totalDistance.toLocaleString('th-TH')} km` : 'สะสมขั้นต่ำ 2 ครั้ง';
+      document.getElementById('evTotalCost').textContent = `${parseFloat(stats.totalCost).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')}${currency}`;
+      document.getElementById('evTotalKWh').textContent = `${parseFloat(stats.totalKWh).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')} kWh`;
+      document.getElementById('evAvgCostPerKWh').textContent = `${stats.costPerKWh}${currency}`;
+      document.getElementById('evCostPerKm').textContent = stats.totalDistance > 0 ? `${stats.costPerKm}${currency}` : noComp;
+      document.getElementById('evAvgEfficiency').textContent = stats.totalDistance > 0 ? `${stats.kmPerKWh} km/kWh` : noComp;
+      document.getElementById('evTotalDistance').textContent = stats.totalDistance > 0 ? `${stats.totalDistance.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')} km` : minRecords;
 
       // อัปเดตตารางประวัติ EV
       const tableBody = document.getElementById('evLogsTableBody');
       tableBody.innerHTML = '';
 
       if (logs.length === 0) {
+        const noEvLogs = lang === 'th' ? 'ไม่มีข้อมูลประวัติการชาร์จรถไฟฟ้าเลยจ้า' : 'No EV charging history logs.';
         tableBody.innerHTML = `
           <tr>
             <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
-              ไม่มีข้อมูลประวัติการชาร์จรถไฟฟ้าเลยจ้า
+              ${noEvLogs}
             </td>
           </tr>
         `;
@@ -900,47 +1076,74 @@ async function fetchEVStatistics() {
 
       logs.forEach((log, index) => {
         const tr = document.createElement('tr');
-        const formattedDate = new Date(log.transaction_date).toLocaleDateString('th-TH', {
+        const formattedDate = new Date(log.transaction_date).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
           day: 'numeric',
           month: 'short',
           year: 'numeric'
         });
 
         // คำนวณช่วงการสิ้นเปลืองของรอบนี้เมื่อเทียบกับรอบก่อนหน้า (หากมี)
-        let rowOdoInfo = log.odometer ? `${log.odometer.toLocaleString()} km` : '-';
+        let rowOdoInfo = log.odometer ? `${log.odometer.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')} km` : '-';
         
         let badgeHTML = '';
         if (log.payment_method === 'credit') {
           if (log.credit_status === 'unpaid') {
-            badgeHTML = `<br><span class="ev-badge" style="background-color: #FFF2E2; color: #E29734; border-color: #E29734; font-size: 0.7rem; padding: 1px 6px; margin: 2px 0 0 0; display: inline-flex;"><i class="fa-solid fa-credit-card"></i> ค้างจ่าย 💳</span>`;
+            const unpaidText = lang === 'th' ? 'ค้างจ่าย' : 'Unpaid';
+            badgeHTML = `<br><span class="ev-badge" style="background-color: #FFF2E2; color: #E29734; border-color: #E29734; font-size: 0.7rem; padding: 1px 6px; margin: 2px 0 0 0; display: inline-flex;"><i class="fa-solid fa-credit-card"></i> ${unpaidText} 💳</span>`;
           } else if (log.credit_status === 'paid') {
-            badgeHTML = `<br><span class="ev-badge" style="background-color: var(--income-bg); color: var(--income-color); border-color: var(--income-color); font-size: 0.7rem; padding: 1px 6px; margin: 2px 0 0 0; display: inline-flex;"><i class="fa-solid fa-circle-check"></i> จ่ายแล้ว ✅</span>`;
+            const paidText = lang === 'th' ? 'จ่ายแล้ว' : 'Paid';
+            badgeHTML = `<br><span class="ev-badge" style="background-color: var(--income-bg); color: var(--income-color); border-color: var(--income-color); font-size: 0.7rem; padding: 1px 6px; margin: 2px 0 0 0; display: inline-flex;"><i class="fa-solid fa-circle-check"></i> ${paidText} ✅</span>`;
           }
         }
         
+        let branchText = '';
+        if (log.station_branch) {
+          branchText = lang === 'th' ? ` สาขา ${log.station_branch}` : ` Branch ${log.station_branch}`;
+        }
+        let cabinetText = '';
+        if (log.station_cabinet) {
+          cabinetText = lang === 'th' ? ` ตู้ ${log.station_cabinet}` : ` Cabinet ${log.station_cabinet}`;
+        }
+
+        const editTitle = lang === 'th' ? 'แก้ไขรายการนี้' : 'Edit';
+        const deleteTitle = lang === 'th' ? 'ลบรายการนี้' : 'Delete';
+        const viewDetailsText = lang === 'th' ? 'ดูรายละเอียด' : 'View Details';
+
+        const displayUser = getUserDisplayName({ username: log.avatar, displayName: log.display_name, display_name: log.display_name });
+
+        const dateHeader = lang === 'th' ? 'วันที่ชาร์จ' : 'Date';
+        const userHeader = lang === 'th' ? 'คนบันทึก' : 'Recorded By';
+        const stationHeader = lang === 'th' ? 'สถานีชาร์จ' : 'Station';
+        const chargerHeader = lang === 'th' ? 'หัวชาร์จ' : 'Charger';
+        const energyHeader = lang === 'th' ? 'ปริมาณไฟ' : 'Energy';
+        const batteryHeader = lang === 'th' ? 'แบตเตอรี่' : 'Battery';
+        const odoHeader = lang === 'th' ? 'เลขไมล์' : 'Odometer';
+        const costHeader = lang === 'th' ? 'ค่าชาร์จ' : 'Cost';
+        const manageHeader = lang === 'th' ? 'จัดการ' : 'Action';
+
         tr.innerHTML = `
-          <td data-label="วันที่ชาร์จ">${formattedDate}</td>
-          <td data-label="คนบันทึก">${log.display_name}</td>
-          <td data-label="สถานีชาร์จ"><strong>${log.station_name || '-'}${log.station_branch ? ` สาขา ${log.station_branch}` : ''}${log.station_cabinet ? ` ตู้ ${log.station_cabinet}` : ''}</strong></td>
-          <td data-label="หัวชาร์จ">${log.charger_power ? `${log.charger_power} kW` : '-'}</td>
-          <td data-label="ปริมาณไฟ">${log.energy_delivered ? `${parseFloat(log.energy_delivered).toFixed(1)} kWh` : '-'}</td>
-          <td data-label="แบตเตอรี่">
+          <td data-label="${dateHeader}">${formattedDate}</td>
+          <td data-label="${userHeader}">${displayUser}</td>
+          <td data-label="${stationHeader}"><strong>${log.station_name || '-'}${branchText}${cabinetText}</strong></td>
+          <td data-label="${chargerHeader}">${log.charger_power ? `${log.charger_power} kW` : '-'}</td>
+          <td data-label="${energyHeader}">${log.energy_delivered ? `${parseFloat(log.energy_delivered).toFixed(1)} kWh` : '-'}</td>
+          <td data-label="${batteryHeader}">
             ${log.start_battery !== null && log.end_battery !== null ? `${log.start_battery}% ➔ ${log.end_battery}%` : '-'}
           </td>
-          <td data-label="เลขไมล์">${rowOdoInfo}</td>
-          <td data-label="ค่าชาร์จ">
-            <strong>${parseFloat(log.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</strong>
+          <td data-label="${odoHeader}">${rowOdoInfo}</td>
+          <td data-label="${costHeader}">
+            <strong>${parseFloat(log.amount).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })}${currency}</strong>
             ${badgeHTML}
           </td>
-          <td data-label="จัดการ">
+          <td data-label="${manageHeader}">
             <div style="display: flex; gap: 12px; justify-content: center; align-items: center;">
-              <button class="btn-action-edit" onclick="startEditTransaction(${log.transaction_id})" title="แก้ไขรายการนี้"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button class="btn-action-delete" onclick="deleteTransaction(${log.transaction_id})" title="ลบรายการนี้"><i class="fa-solid fa-trash-can"></i></button>
+              <button class="btn-action-edit" onclick="startEditTransaction(${log.transaction_id})" title="${editTitle}"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button class="btn-action-delete" onclick="deleteTransaction(${log.transaction_id})" title="${deleteTitle}"><i class="fa-solid fa-trash-can"></i></button>
             </div>
           </td>
           <td class="mobile-only-cell">
             <button class="btn-toggle-ev-details" onclick="toggleEVRowDetails(this)">
-              <i class="fa-solid fa-chevron-down"></i> ดูรายละเอียด
+              <i class="fa-solid fa-chevron-down"></i> ${viewDetailsText}
             </button>
           </td>
         `;
@@ -1005,7 +1208,9 @@ function startEditTransaction(id) {
   if (category) {
     const searchInput = document.getElementById('categorySearchInput');
     if (searchInput) {
-      searchInput.value = `${category.parent_category || 'หมวดหมู่หลัก'} ➔ ${category.name}`;
+      const lang = localStorage.getItem('lang') || 'th';
+      const parentText = category.parent_category ? getCategoryName(category.parent_category) : (lang === 'th' ? 'หมวดหมู่หลัก' : 'Main Category');
+      searchInput.value = `${parentText} ➔ ${getCategoryName(category.name)}`;
     }
     const hiddenId = document.getElementById('categoryId');
     if (hiddenId) {
@@ -1083,12 +1288,13 @@ function startEditTransaction(id) {
 
   // ปรับ UI ให้เป็นโหมดแก้ไข
   const formTitle = document.querySelector('#transactionFormCard .card-title');
+  const lang = localStorage.getItem('lang') || 'th';
   if (formTitle) {
-    formTitle.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> แก้ไขรายการของฉัน`;
+    formTitle.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> ${translations[lang].form_title_edit}`;
   }
   
   const submitBtn = document.querySelector('#transactionForm button[type="submit"]');
-  submitBtn.innerHTML = `บันทึกการแก้ไข! ✏️`;
+  submitBtn.innerHTML = translations[lang].btn_save_edit;
   submitBtn.style.backgroundColor = 'var(--ev-color)';
   submitBtn.style.boxShadow = '0 4px 0px #5F8F9F';
 
@@ -1101,7 +1307,7 @@ function startEditTransaction(id) {
     cancelBtn.style.backgroundColor = '#C4B9AA';
     cancelBtn.style.boxShadow = '0 4px 0px #A4998A';
     cancelBtn.style.marginTop = '10px';
-    cancelBtn.innerHTML = `ยกเลิกการแก้ไข ❌`;
+    cancelBtn.innerHTML = translations[lang].btn_cancel_edit;
     cancelBtn.onclick = cancelEditMode;
     document.getElementById('transactionForm').appendChild(cancelBtn);
   }
@@ -1113,12 +1319,13 @@ function cancelEditMode() {
   editCreditStatus = 'none';
 
   const formTitle = document.querySelector('#transactionFormCard .card-title');
+  const lang = localStorage.getItem('lang') || 'th';
   if (formTitle) {
-    formTitle.innerHTML = `<i class="fa-solid fa-heart-circle-plus"></i> บันทึกรายการใหม่`;
+    formTitle.innerHTML = `<i class="fa-solid fa-heart-circle-plus"></i> ${translations[lang].form_title_new}`;
   }
   
   const submitBtn = document.querySelector('#transactionForm button[type="submit"]');
-  submitBtn.innerHTML = `บันทึกรายการเลย! ✨`;
+  submitBtn.innerHTML = translations[lang].btn_save_new;
   submitBtn.style.backgroundColor = 'var(--primary-color)';
   submitBtn.style.boxShadow = '0 4px 0px #E59F9F';
 
@@ -1200,6 +1407,9 @@ function renderUnpaidCredits() {
   
   listContainer.innerHTML = '';
   
+  const lang = localStorage.getItem('lang') || 'th';
+  const currency = lang === 'th' ? ' ฿' : ' THB';
+
   // กรองรายการตามบัตรเครดิตที่เลือก
   const filtered = activeCreditCardFilter === 'all'
     ? unpaidTransactionsList
@@ -1211,17 +1421,20 @@ function renderUnpaidCredits() {
     totalUnpaid += parseFloat(t.amount);
   });
   
-  document.getElementById('totalUnpaidCredit').textContent = `${totalUnpaid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿`;
+  document.getElementById('totalUnpaidCredit').textContent = `${totalUnpaid.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })}${currency}`;
   const creditOutstandingEl = document.getElementById('totalCreditOutstanding');
   if (creditOutstandingEl) {
-    creditOutstandingEl.textContent = `${totalUnpaid.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿`;
+    creditOutstandingEl.textContent = `${totalUnpaid.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })}${currency}`;
   }
 
   if (filtered.length === 0) {
+    const emptyMsg = activeCreditCardFilter === 'all' 
+      ? (lang === 'th' ? translations.th.credit_empty_msg : translations.en.credit_empty_msg) 
+      : (lang === 'th' ? translations.th.credit_empty_filter_msg : translations.en.credit_empty_filter_msg);
     listContainer.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 25px; font-size: 0.85rem;">
         <i class="fa-solid fa-face-smile" style="font-size: 1.5rem; margin-bottom: 5px; color: var(--income-color);"></i>
-        <p>${activeCreditCardFilter === 'all' ? 'ไม่มียอดค้างชำระบัตรเครดิตเลยจ้า! 🌸' : 'ไม่มียอดค้างชำระของบัตรนี้เลยจ้า! 🌸'}</p>
+        <p>${emptyMsg}</p>
       </div>
     `;
     actionArea.style.display = 'none';
@@ -1240,21 +1453,22 @@ function renderUnpaidCredits() {
     div.style.color = 'var(--text-color)';
     div.style.fontSize = '0.85rem';
     
-    const formattedDate = new Date(t.transaction_date).toLocaleDateString('th-TH', {
+    const formattedDate = new Date(t.transaction_date).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
       day: 'numeric',
       month: 'short'
     });
     
     const cardDisplay = t.credit_card_name ? ` (${t.credit_card_name})` : '';
+    const noDesc = lang === 'th' ? 'ไม่มีคำอธิบาย' : 'No description';
     div.innerHTML = `
       <div style="display: flex; align-items: center; gap: 8px;">
         <input type="checkbox" class="credit-checkbox" value="${t.id}" data-amount="${t.amount}" style="width: 16px; height: 16px; cursor: pointer;" onchange="updateSelectedCreditAmount()">
         <div>
-          <strong>${t.category_name}</strong><span style="color: var(--ev-color); font-weight: 500;">${cardDisplay}</span> - ${t.description || 'ไม่มีคำอธิบาย'}<br>
+          <strong>${getCategoryName(t.category_name)}</strong><span style="color: var(--ev-color); font-weight: 500;">${cardDisplay}</span> - ${t.description || noDesc}<br>
           <span style="font-size: 0.75rem; color: var(--text-muted);">${formattedDate}</span>
         </div>
       </div>
-      <strong style="color: var(--expense-color);">${parseFloat(t.amount).toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</strong>
+      <strong style="color: var(--expense-color);">${parseFloat(t.amount).toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })}${currency}</strong>
     `;
     listContainer.appendChild(div);
   });
@@ -1287,14 +1501,17 @@ function updateSelectedCreditAmount() {
   checkboxes.forEach(cb => {
     selectedSum += parseFloat(cb.getAttribute('data-amount') || 0);
   });
-  document.getElementById('selectedCreditAmount').textContent = `${selectedSum.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿`;
+  const lang = localStorage.getItem('lang') || 'th';
+  const currency = lang === 'th' ? ' ฿' : ' THB';
+  document.getElementById('selectedCreditAmount').textContent = `${selectedSum.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US', { minimumFractionDigits: 2 })}${currency}`;
 }
 
 // ชำระยอดหนี้ที่เลือก (ส่งไปยัง API หักยอดเงินสดจริงในบัญชี)
 async function payCreditTransactions() {
   const checkboxes = document.querySelectorAll('.credit-checkbox:checked');
+  const lang = localStorage.getItem('lang') || 'th';
   if (checkboxes.length === 0) {
-    alert('กรุณาเลือกรายการค้างชำระอย่างน้อย 1 รายการครับ');
+    alert(translations[lang].alert_no_credit_selected);
     return;
   }
   
@@ -1302,7 +1519,7 @@ async function payCreditTransactions() {
   const paymentDate = document.getElementById('creditPayDate').value;
   
   if (!paymentDate) {
-    alert('กรุณาระบุวันที่ชำระเงินด้วยครับ');
+    alert(translations[lang].alert_no_pay_date);
     return;
   }
   
@@ -1320,17 +1537,18 @@ async function payCreditTransactions() {
     if (data.success) {
       await fetchTransactions(); // อัปเดตข้อมูลแดชบอร์ด
     } else {
-      alert(data.message || 'ชำระยอดเครดิตไม่สำเร็จ');
+      alert(data.message || translations[lang].alert_pay_credit_failed);
     }
   } catch (error) {
     console.error(error);
-    alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+    alert(translations[lang].alert_conn_error);
   }
 }
 
 // จัดการการ Logout
 async function handleLogout() {
-  if (!confirm('ออกจากระบบใช่ไหมครับบ๊ายบาย? 👋')) return;
+  const lang = localStorage.getItem('lang') || 'th';
+  if (!confirm(translations[lang].alert_logout_confirm)) return;
 
   try {
     const res = await fetch(basePath + '/api/auth/logout', { method: 'POST' });
@@ -1340,7 +1558,7 @@ async function handleLogout() {
     }
   } catch (error) {
     console.error('Logout error:', error);
-    alert('เกิดข้อผิดพลาดในการออกจากระบบ');
+    alert(translations[lang].alert_logout_failed);
   }
 }
 
@@ -1452,8 +1670,9 @@ async function handleChangePassword(event) {
   errorDiv.style.display = 'none';
   successDiv.style.display = 'none';
 
+  const lang = localStorage.getItem('lang') || 'th';
   if (newPassword !== confirmNewPassword) {
-    errorDiv.textContent = 'รหัสผ่านใหม่ไม่ตรงกันจ้า กรุณากรอกใหม่อีกครั้ง';
+    errorDiv.textContent = lang === 'th' ? 'รหัสผ่านใหม่ไม่ตรงกันจ้า กรุณากรอกใหม่อีกครั้ง' : 'New passwords do not match. Please try again.';
     errorDiv.style.display = 'block';
     return;
   }
@@ -1478,12 +1697,12 @@ async function handleChangePassword(event) {
         closeChangePasswordModal();
       }, 1500);
     } else {
-      errorDiv.textContent = data.message || 'เปลี่ยนรหัสผ่านไม่สำเร็จ';
+      errorDiv.textContent = data.message || (lang === 'th' ? 'เปลี่ยนรหัสผ่านไม่สำเร็จ' : 'Password change failed.');
       errorDiv.style.display = 'block';
     }
   } catch (error) {
     console.error('Change password error:', error);
-    errorDiv.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์';
+    errorDiv.textContent = lang === 'th' ? 'เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์' : 'Connection to server failed.';
     errorDiv.style.display = 'block';
   }
 }
@@ -1517,11 +1736,12 @@ function toggleEVRowDetails(button) {
   if (!tr) return;
   
   const isExpanded = tr.classList.toggle('expanded');
+  const lang = localStorage.getItem('lang') || 'th';
   
   if (isExpanded) {
-    button.innerHTML = '<i class="fa-solid fa-chevron-up"></i> ซ่อนรายละเอียด';
+    button.innerHTML = `<i class="fa-solid fa-chevron-up"></i> ${translations[lang].ev_btn_hide}`;
   } else {
-    button.innerHTML = '<i class="fa-solid fa-chevron-down"></i> ดูรายละเอียด';
+    button.innerHTML = `<i class="fa-solid fa-chevron-down"></i> ${translations[lang].ev_btn_show}`;
   }
 }
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>บ้านแสนอุ่นบันทึกการเงิน 🏠 | Family Expense & EV Tracker</title>
+  <title data-i18n="title">บ้านแสนอุ่นบันทึกการเงิน 🏠 | Family Expense & EV Tracker</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="css/style.css?v=1.0.3">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,6 +15,8 @@
       if (theme === 'dark') {
         document.documentElement.classList.add('dark-mode');
       }
+      const lang = localStorage.getItem('lang') || 'th';
+      document.documentElement.setAttribute('lang', lang);
     })();
   </script>
 </head>
@@ -24,9 +26,14 @@
   <header>
     <div class="logo">
       <i class="fa-solid fa-house-chimney-heart"></i>
-      ex<span>pense</span>
+      ex<span data-i18n="logo_span">pense</span>
     </div>
     <div style="display: flex; align-items: center; gap: 15px;">
+      <!-- Toggle Language Button -->
+      <button id="langToggleBtn" onclick="toggleLang()" class="lang-toggle-btn" title="Change Language / เปลี่ยนภาษา 🌐">
+        EN
+      </button>
+
       <!-- Toggle Dark Mode Button -->
       <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn" title="เปลี่ยนธีม 🌓">
         <i class="fa-solid fa-moon"></i>
@@ -41,9 +48,9 @@
           </div>
         </div>
         <div class="profile-dropdown-menu" id="profileDropdownMenu">
-          <button class="dropdown-item" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> เปลี่ยนรหัส</button>
+          <button class="dropdown-item" onclick="openChangePasswordModal()"><i class="fa-solid fa-key"></i> <span data-i18n="change_password">เปลี่ยนรหัส</span></button>
           <div class="dropdown-divider"></div>
-          <button class="dropdown-item logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> ออกจากบ้าน</button>
+          <button class="dropdown-item logout" onclick="handleLogout()"><i class="fa-solid fa-sign-out-alt"></i> <span data-i18n="logout">ออกจากบ้าน</span></button>
         </div>
       </div>
     </div>
@@ -56,28 +63,28 @@
       <div class="summary-card balance">
         <div class="icon-box"><i class="fa-solid fa-piggy-bank"></i></div>
         <div class="details">
-          <h3>เงินคงเหลือบ้านเรา</h3>
+          <h3 data-i18n="card_balance">เงินคงเหลือบ้านเรา</h3>
           <p id="totalBalance">0.00 ฿</p>
         </div>
       </div>
       <div class="summary-card income">
         <div class="icon-box"><i class="fa-solid fa-wallet"></i></div>
         <div class="details">
-          <h3>รายรับรวมเดือนนี้</h3>
+          <h3 data-i18n="card_income">รายรับรวมเดือนนี้</h3>
           <p id="totalIncome">0.00 ฿</p>
         </div>
       </div>
       <div class="summary-card expense">
         <div class="icon-box"><i class="fa-solid fa-shopping-bag"></i></div>
         <div class="details">
-          <h3>รายจ่ายรวมเดือนนี้</h3>
+          <h3 data-i18n="card_expense">รายจ่ายรวมเดือนนี้</h3>
           <p id="totalExpense">0.00 ฿</p>
         </div>
       </div>
       <div class="summary-card ev">
         <div class="icon-box" style="background-color: var(--ev-bg); color: var(--ev-color);"><i class="fa-solid fa-credit-card"></i></div>
         <div class="details">
-          <h3>ค้างชำระบัตรเครดิต</h3>
+          <h3 data-i18n="card_credit">ค้างชำระบัตรเครดิต</h3>
           <p id="totalCreditOutstanding" style="color: var(--ev-color);">0.00 ฿</p>
         </div>
       </div>
@@ -86,17 +93,17 @@
     <!-- 2. Tabs Switcher -->
     <div class="tabs">
       <!-- Desktop Tab -->
-      <button class="tab-btn active desktop-only" onclick="switchTab('transactions-tab')"><i class="fa-solid fa-pen-fancy"></i> บันทึกรายวัน</button>
+      <button class="tab-btn active desktop-only" onclick="switchTab('transactions-tab')"><i class="fa-solid fa-pen-fancy"></i> <span data-i18n="tab_daily">บันทึกรายวัน</span></button>
       
       <!-- Mobile Tabs -->
-      <button class="tab-btn mobile-only" onclick="switchTab('summary-tab')"><i class="fa-solid fa-wallet"></i> สรุปยอด</button>
-      <button class="tab-btn active mobile-only" onclick="switchTab('form-tab')"><i class="fa-solid fa-pen-to-square"></i> จดบันทึก</button>
-      <button class="tab-btn mobile-only" onclick="switchTab('list-tab')"><i class="fa-solid fa-list-check"></i> รายการเงิน</button>
+      <button class="tab-btn mobile-only" onclick="switchTab('summary-tab')"><i class="fa-solid fa-wallet"></i> <span data-i18n="tab_summary">สรุปยอด</span></button>
+      <button class="tab-btn active mobile-only" onclick="switchTab('form-tab')"><i class="fa-solid fa-pen-to-square"></i> <span data-i18n="tab_form">จดบันทึก</span></button>
+      <button class="tab-btn mobile-only" onclick="switchTab('list-tab')"><i class="fa-solid fa-list-check"></i> <span data-i18n="tab_list">รายการเงิน</span></button>
       
       <!-- Shared Tabs -->
-      <button class="tab-btn" onclick="switchTab('analytics-tab')"><i class="fa-solid fa-chart-pie"></i> กราฟวิเคราะห์</button>
-      <button class="tab-btn" onclick="switchTab('credit-tab')"><i class="fa-solid fa-credit-card"></i> บัตรเครดิต 💳</button>
-      <button class="tab-btn" onclick="switchTab('ev-tab')"><i class="fa-solid fa-car-battery"></i> ชาร์จรถไฟฟ้า ⚡</button>
+      <button class="tab-btn" onclick="switchTab('analytics-tab')"><i class="fa-solid fa-chart-pie"></i> <span data-i18n="tab_analytics">กราฟวิเคราะห์</span></button>
+      <button class="tab-btn" onclick="switchTab('credit-tab')"><i class="fa-solid fa-credit-card"></i> <span data-i18n="tab_credit">บัตรเครดิต 💳</span></button>
+      <button class="tab-btn" onclick="switchTab('ev-tab')"><i class="fa-solid fa-car-battery"></i> <span data-i18n="tab_ev">ชาร์จรถไฟฟ้า ⚡</span></button>
     </div>
 
     <!-- Tab 1: Transactions Page (Desktop only container) -->
@@ -105,26 +112,26 @@
         
         <!-- Left: Transaction Form Card -->
         <div class="cute-card" id="transactionFormCard">
-          <h2 class="card-title"><i class="fa-solid fa-heart-circle-plus"></i> บันทึกรายการใหม่</h2>
+          <h2 class="card-title"><i class="fa-solid fa-heart-circle-plus"></i> <span data-i18n="form_title_new">บันทึกรายการใหม่</span></h2>
           
           <form id="transactionForm" onsubmit="saveTransaction(event)">
             <!-- ประเภท: รายรับ / รายจ่าย -->
             <div class="type-selector">
-              <button type="button" class="type-btn active expense" onclick="setTransactionType('expense')">รายจ่าย 💸</button>
-              <button type="button" class="type-btn income" onclick="setTransactionType('income')">รายรับ 💰</button>
+              <button type="button" class="type-btn active expense" onclick="setTransactionType('expense')" data-i18n="type_expense">รายจ่าย 💸</button>
+              <button type="button" class="type-btn income" onclick="setTransactionType('income')" data-i18n="type_income">รายรับ 💰</button>
             </div>
 
             <!-- วันที่ -->
             <div class="form-group">
-              <label for="transactionDate"><i class="fa-solid fa-calendar-alt"></i> วันที่ทำรายการ</label>
+              <label for="transactionDate"><i class="fa-solid fa-calendar-alt"></i> <span data-i18n="label_date">วันที่ทำรายการ</span></label>
               <input type="date" id="transactionDate" class="form-control" required>
             </div>
 
             <!-- ค้นหาหมวดหมู่แบบพิมพ์ค้นหา -->
             <div class="form-group category-search-container">
-              <label for="categorySearchInput"><i class="fa-solid fa-search"></i> ค้นหาหมวดหมู่ (พิมพ์ค้นหาได้เลย)</label>
+              <label for="categorySearchInput"><i class="fa-solid fa-search"></i> <span data-i18n="label_search_cat">ค้นหาหมวดหมู่ (พิมพ์ค้นหาได้เลย)</span></label>
               <div class="search-input-wrapper">
-                <input type="text" id="categorySearchInput" class="form-control" placeholder="พิมพ์เพื่อค้นหา เช่น อาหาร, เดินทาง, ชาร์จรถ..." autocomplete="off" onclick="showCategorySuggestions()" oninput="filterCategorySuggestions()" required>
+                <input type="text" id="categorySearchInput" class="form-control" data-i18n-placeholder="placeholder_search_cat" placeholder="พิมพ์เพื่อค้นหา เช่น อาหาร, เดินทาง, ชาร์จรถ..." autocomplete="off" onclick="showCategorySuggestions()" oninput="filterCategorySuggestions()" required>
                 <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
               </div>
               <input type="hidden" id="categoryId" required>
@@ -133,38 +140,38 @@
 
             <!-- เลือกประเภทมื้ออาหาร (จะแสดงเมื่อเลือกหมวดหมู่อาหาร) -->
             <div class="form-group" id="mealTypeGroup" style="display: none;">
-              <label for="mealType"><i class="fa-solid fa-utensils"></i> มื้ออาหาร</label>
+              <label for="mealType"><i class="fa-solid fa-utensils"></i> <span data-i18n="label_meal_type">มื้ออาหาร</span></label>
               <select id="mealType" class="form-control">
-                <option value="เช้า">เช้า 🌅</option>
-                <option value="กลางวัน">กลางวัน ☀️</option>
-                <option value="เย็น">เย็น 🌇</option>
-                <option value="ดึก">ดึก 🌙</option>
+                <option value="เช้า" data-i18n="meal_breakfast">เช้า 🌅</option>
+                <option value="กลางวัน" data-i18n="meal_lunch">กลางวัน ☀️</option>
+                <option value="เย็น" data-i18n="meal_dinner">เย็น 🌇</option>
+                <option value="ดึก" data-i18n="meal_night">ดึก 🌙</option>
               </select>
             </div>
 
             <!-- เลือกผู้ได้รับเงิน (จะแสดงเมื่อเลือกหมวดหมู่ให้ครอบครัว/คนในบ้าน) -->
             <div class="form-group" id="recipientGroup" style="display: none;">
-              <label for="recipient"><i class="fa-solid fa-people-roof"></i> ให้ใครในครอบครัว</label>
+              <label for="recipient"><i class="fa-solid fa-people-roof"></i> <span data-i18n="label_recipient">ให้ใครในครอบครัว</span></label>
               <select id="recipient" class="form-control">
-                <option value="ย่า">ย่า 👵</option>
-                <option value="แม่">แม่ 👩</option>
-                <option value="ลูก">ลูก 👦</option>
-                <option value="ญาติ">ญาติ 👥</option>
+                <option value="ย่า" data-i18n="rec_grandma">ย่า 👵</option>
+                <option value="แม่" data-i18n="rec_mom">แม่ 👩</option>
+                <option value="ลูก" data-i18n="rec_kid">ลูก 👦</option>
+                <option value="ญาติ" data-i18n="rec_relatives">ญาติ 👥</option>
               </select>
             </div>
 
             <!-- วิธีชำระเงิน (จะซ่อนอัตโนมัติถ้ารายรับ) -->
             <div class="form-group" id="paymentMethodGroup">
-              <label for="paymentMethod"><i class="fa-solid fa-credit-card"></i> ช่องทางการชำระเงิน</label>
+              <label for="paymentMethod"><i class="fa-solid fa-credit-card"></i> <span data-i18n="label_payment_method">ช่องทางการชำระเงิน</span></label>
               <select id="paymentMethod" class="form-control" onchange="toggleCreditCardGroup()">
-                <option value="cash">เงินสด / โอนจ่ายทันที 💵</option>
-                <option value="credit">รูดบัตรเครดิต / ค้างชำระจ่ายเดือนหน้า 💳</option>
+                <option value="cash" data-i18n="method_cash">เงินสด / โอนจ่ายทันที 💵</option>
+                <option value="credit" data-i18n="method_credit">รูดบัตรเครดิต / ค้างชำระจ่ายเดือนหน้า 💳</option>
               </select>
             </div>
 
             <!-- เลือกบัตรเครดิต (จะซ่อนอัตโนมัติยกเว้นช่องทางการชำระเงินเป็นบัตรเครดิต) -->
             <div class="form-group" id="creditCardNameGroup" style="display: none;">
-              <label for="creditCardName"><i class="fa-solid fa-credit-card"></i> บัตรเครดิต / แหล่งวงเงิน</label>
+              <label for="creditCardName"><i class="fa-solid fa-credit-card"></i> <span data-i18n="label_credit_card">เลือกบัตรเครดิต</span></label>
               <select id="creditCardName" class="form-control">
                 <option value="Kbank">Kbank</option>
                 <option value="BBL">BBL</option>
@@ -177,65 +184,65 @@
 
             <!-- จำนวนเงิน -->
             <div class="form-group">
-              <label for="amount"><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงิน (บาท)</label>
-              <input type="number" id="amount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+              <label for="amount"><i class="fa-solid fa-money-bill-wave"></i> <span data-i18n="label_amount">จำนวนเงิน (บาท)</span></label>
+              <input type="number" id="amount" class="form-control" data-i18n-placeholder="placeholder_amount" placeholder="0.00" step="0.01" min="0.01" required>
             </div>
 
             <!-- คำอธิบายเพิ่มเติม -->
             <div class="form-group">
-              <label for="description"><i class="fa-solid fa-edit"></i> บันทึกช่วยจำ / รายละเอียด</label>
-              <input type="text" id="description" class="form-control" placeholder="เช่น ค่าข้าวเช้าพ่อ, เงินปันผลกบ...">
+              <label for="description"><i class="fa-solid fa-edit"></i> <span data-i18n="label_description">บันทึกช่วยจำ / รายละเอียด</span></label>
+              <input type="text" id="description" class="form-control" data-i18n-placeholder="placeholder_description" placeholder="เช่น ค่าข้าวเช้าพ่อ, เงินปันผลกบ...">
             </div>
 
             <!-- ส่วนขยายสำหรับ EV Charging (ซ่อนไว้ก่อน เปิดเฉพาะตอนเลือกหมวดหมู่ชาร์จรถ EV) -->
             <div id="evDetailsSection" class="ev-expandable">
-              <div class="ev-header-toggle">
+              <div class="ev-header-toggle" data-i18n="ev_section_title">
                 <i class="fa-solid fa-bolt" style="color: var(--ev-color);"></i> รายละเอียดการชาร์จรถ EV (สำหรับคำนวณสถิติ)
               </div>
               <div class="ev-grid">
                 <div class="form-group">
-                  <label for="evStationNameSelect">ชื่อสถานีชาร์จ</label>
+                  <label for="evStationNameSelect" data-i18n="label_ev_station">ชื่อสถานีชาร์จ</label>
                   <select id="evStationNameSelect" class="form-control" onchange="toggleCustomStationInput(); updateEVDescription();">
                     <option value="PTT">PTT</option>
                     <option value="EleX">EleX</option>
                     <option value="PEA">PEA</option>
                     <option value="SPARK">SPARK</option>
-                    <option value="อื่นๆ">อื่นๆ (ระบุเอง)</option>
+                    <option value="อื่นๆ" data-i18n="ev_station_other">อื่นๆ (ระบุเอง)</option>
                   </select>
-                  <input type="text" id="evStationNameCustom" class="form-control" placeholder="ระบุชื่อสถานีชาร์จ..." style="display: none; margin-top: 8px;" oninput="updateEVDescription();">
+                  <input type="text" id="evStationNameCustom" class="form-control" data-i18n-placeholder="placeholder_ev_station_custom" placeholder="ระบุชื่อสถานีชาร์จ..." style="display: none; margin-top: 8px;" oninput="updateEVDescription();">
                 </div>
                 <div class="form-group">
-                  <label for="evStationBranch">สาขาของสถานี</label>
-                  <input type="text" id="evStationBranch" class="form-control" placeholder="เช่น วังน้อย, พระราม 9" oninput="updateEVDescription();">
+                  <label for="evStationBranch" data-i18n="label_ev_branch">สาขา</label>
+                  <input type="text" id="evStationBranch" class="form-control" data-i18n-placeholder="placeholder_ev_branch" placeholder="เช่น วังน้อย, พระราม 9" oninput="updateEVDescription();">
                 </div>
                 <div class="form-group">
-                  <label for="evStationCabinet">เลขตู้ชาร์จ</label>
-                  <input type="text" id="evStationCabinet" class="form-control" placeholder="เช่น 01, A, 04-DC" oninput="updateEVDescription();">
+                  <label for="evStationCabinet" data-i18n="label_ev_cabinet">ตู้ชาร์จ/เลขตู้</label>
+                  <input type="text" id="evStationCabinet" class="form-control" data-i18n-placeholder="placeholder_ev_cabinet" placeholder="เช่น 01, A, 04-DC" oninput="updateEVDescription();">
                 </div>
                 <div class="form-group">
-                  <label for="evChargerPower">กำลังไฟหัวชาร์จ (kW)</label>
-                  <input type="number" id="evChargerPower" class="form-control" placeholder="เช่น 120, 150">
+                  <label for="evChargerPower" data-i18n="label_ev_power">กำลังไฟหัวชาร์จ (kW)</label>
+                  <input type="number" id="evChargerPower" class="form-control" data-i18n-placeholder="placeholder_ev_power" placeholder="เช่น 120, 150">
                 </div>
                 <div class="form-group">
-                  <label for="evEnergyDelivered">ไฟที่ชาร์จเข้า (kWh)</label>
-                  <input type="number" id="evEnergyDelivered" class="form-control" placeholder="เช่น 45.5" step="0.01">
+                  <label for="evEnergyDelivered" data-i18n="label_ev_energy">ไฟที่ชาร์จเข้า (kWh)</label>
+                  <input type="number" id="evEnergyDelivered" class="form-control" data-i18n-placeholder="placeholder_ev_energy" placeholder="เช่น 45.5" step="0.01">
                 </div>
                 <div class="form-group">
-                  <label for="evOdometer">เลขไมล์รถปัจจุบัน (km)</label>
-                  <input type="number" id="evOdometer" class="form-control" placeholder="เช่น 45000">
+                  <label for="evOdometer" data-i18n="label_ev_odometer">เลขไมล์รถปัจจุบัน (km)</label>
+                  <input type="number" id="evOdometer" class="form-control" data-i18n-placeholder="placeholder_ev_odometer" placeholder="เช่น 45000">
                 </div>
                 <div class="form-group">
-                  <label for="evStartBattery">แบตก่อนชาร์จ (%)</label>
-                  <input type="number" id="evStartBattery" class="form-control" placeholder="เช่น 20" min="0" max="100">
+                  <label for="evStartBattery" data-i18n="label_ev_start_bat">แบตก่อนชาร์จ (%)</label>
+                  <input type="number" id="evStartBattery" class="form-control" data-i18n-placeholder="placeholder_ev_start_bat" placeholder="เช่น 20" min="0" max="100">
                 </div>
                 <div class="form-group">
-                  <label for="evEndBattery">หลังชาร์จ (%)</label>
-                  <input type="number" id="evEndBattery" class="form-control" placeholder="เช่น 80" min="0" max="100">
+                  <label for="evEndBattery" data-i18n="label_ev_end_bat">หลังชาร์จ (%)</label>
+                  <input type="number" id="evEndBattery" class="form-control" data-i18n-placeholder="placeholder_ev_end_bat" placeholder="เช่น 80" min="0" max="100">
                 </div>
               </div>
             </div>
 
-            <button type="submit" class="btn-cute">บันทึกรายการเลย! ✨</button>
+            <button type="submit" class="btn-cute" data-i18n="btn_save_new">บันทึกรายการเลย! ✨</button>
           </form>
         </div>
 
@@ -244,13 +251,13 @@
           
           <!-- Right: Transaction List Card -->
           <div class="cute-card">
-            <h2 class="card-title"><i class="fa-solid fa-list-check"></i> รายการเงินบ้านเรา</h2>
+            <h2 class="card-title"><i class="fa-solid fa-list-check"></i> <span data-i18n="list_title">รายการเงินบ้านเรา</span></h2>
             
             <!-- แถบเครื่องมือกรองรายการ -->
             <div class="filter-bar">
               <div class="filter-group">
                 <div class="filter-label">
-                  <i class="fa-solid fa-filter"></i> กรอง:
+                  <i class="fa-solid fa-filter"></i> <span data-i18n="filter_label">กรอง:</span>
                 </div>
                 <select id="filterMonth" onchange="fetchTransactions()">
                   <option value="1">มกราคม</option>
@@ -275,10 +282,10 @@
                   <!-- ดึงข้อมูลรายบุคคลโดย JS -->
                 </select>
                 <select id="filterPayment" onchange="fetchTransactions()">
-                  <option value="all">วิธีชำระทั้งหมด 📂</option>
-                  <option value="cash">เงินสด / โอนจ่าย 💵</option>
-                  <option value="credit_unpaid">บัตรเครดิตค้างจ่าย 💳</option>
-                  <option value="credit_paid">บัตรเครดิตจ่ายแล้ว ✅</option>
+                  <option value="all" data-i18n="filter_method_all">วิธีชำระทั้งหมด 📂</option>
+                  <option value="cash" data-i18n="filter_method_cash">เงินสด / โอนจ่าย 💵</option>
+                  <option value="credit_unpaid" data-i18n="filter_method_credit_unpaid">บัตรเครดิตค้างจ่าย 💳</option>
+                  <option value="credit_paid" data-i18n="filter_method_credit_paid">บัตรเครดิตจ่ายแล้ว ✅</option>
                 </select>
               </div>
             </div>
@@ -288,8 +295,6 @@
               <!-- รายการจะถูกสร้างผ่าน JS -->
             </div>
           </div>
-
-
 
         </div>
       </div>
@@ -313,12 +318,12 @@
       <div class="analytics-grid">
         <!-- กราฟรายจ่ายตามหมวดหมู่ -->
         <div class="chart-container">
-          <h2 class="card-title"><i class="fa-solid fa-chart-pie"></i> สัดส่วนรายจ่ายเดือนนี้</h2>
+          <h2 class="card-title"><i class="fa-solid fa-chart-pie"></i> <span data-i18n="chart_category_title">สัดส่วนรายจ่ายเดือนนี้</span></h2>
           <canvas id="categoryChart"></canvas>
         </div>
         <!-- เปรียบเทียบ รายรับ VS รายจ่าย -->
         <div class="chart-container">
-          <h2 class="card-title"><i class="fa-solid fa-chart-bar"></i> รายรับเปรียบเทียบรายจ่าย</h2>
+          <h2 class="card-title"><i class="fa-solid fa-chart-bar"></i> <span data-i18n="chart_comparison_title">รายรับเปรียบเทียบรายจ่าย</span></h2>
           <canvas id="comparisonChart"></canvas>
         </div>
       </div>
@@ -329,47 +334,47 @@
       <!-- EV Stats Grid -->
       <div class="ev-stats-grid">
         <div class="ev-stat-card">
-          <h4>ชาร์จไฟรวมทั้งหมด</h4>
+          <h4 data-i18n="ev_stat_cost">ค่าชาร์จรวมทั้งหมด</h4>
           <p id="evTotalCost">0.00 ฿</p>
         </div>
         <div class="ev-stat-card">
-          <h4>ปริมาณไฟฟ้าที่รับรวม</h4>
+          <h4 data-i18n="ev_stat_energy">ไฟที่ชาร์จรวมทั้งหมด</h4>
           <p id="evTotalKWh">0 kWh</p>
         </div>
         <div class="ev-stat-card">
-          <h4>ค่าชาร์จเฉลี่ยต่อหน่วย</h4>
+          <h4 data-i18n="ev_stat_avg_cost">ค่าชาร์จเฉลี่ยต่อหน่วย</h4>
           <p id="evAvgCostPerKWh">0.00 ฿</p>
         </div>
         <div class="ev-stat-card">
-          <h4>เฉลี่ยกิโลเมตรละ (Cost/km)</h4>
+          <h4 data-i18n="ev_stat_cost_per_km">เฉลี่ยกิโลเมตรละ (Cost/km)</h4>
           <p id="evCostPerKm">0.00 ฿</p>
         </div>
         <div class="ev-stat-card">
-          <h4>อัตราประหยัดเฉลี่ย</h4>
+          <h4 data-i18n="ev_stat_efficiency">อัตราประหยัดเฉลี่ย</h4>
           <p id="evAvgEfficiency">0.00 km/kWh</p>
         </div>
         <div class="ev-stat-card">
-          <h4>ระยะทางสะสมที่บันทึก</h4>
+          <h4 data-i18n="ev_stat_distance">ระยะทางสะสมที่บันทึก</h4>
           <p id="evTotalDistance">0 km</p>
         </div>
       </div>
 
       <!-- EV Logs Table -->
       <div class="ev-table-wrapper">
-        <h2 class="card-title"><i class="fa-solid fa-charging-station"></i> ประวัติการชาร์จรถ EV และการสิ้นเปลือง</h2>
+        <h2 class="card-title"><i class="fa-solid fa-charging-station"></i> <span data-i18n="ev_table_title">ประวัติการชาร์จรถ EV และการสิ้นเปลือง</span></h2>
         <table class="ev-table">
           <thead>
             <tr>
-              <th>วันที่บันทึก</th>
-              <th>คนบันทึก</th>
-              <th>สถานีชาร์จ</th>
-              <th>หัวชาร์จ (kW)</th>
-              <th>ปริมาณไฟ (kWh)</th>
-              <th>แบต (%)</th>
-              <th>เลขไมล์รถ (km)</th>
-              <th>ค่าชาร์จ (บาท)</th>
-              <th>จัดการ</th>
-              <th class="mobile-only-cell">รายละเอียด</th>
+              <th data-i18n="ev_th_date">วันที่บันทึก</th>
+              <th data-i18n="ev_th_user">คนบันทึก</th>
+              <th data-i18n="ev_th_station">สถานีชาร์จ</th>
+              <th data-i18n="ev_th_power">หัวชาร์จ (kW)</th>
+              <th data-i18n="ev_th_energy">ปริมาณไฟ (kWh)</th>
+              <th data-i18n="ev_th_battery">แบต (%)</th>
+              <th data-i18n="ev_th_odometer">เลขไมล์รถ (km)</th>
+              <th data-i18n="ev_th_amount">ค่าชาร์จ (บาท)</th>
+              <th data-i18n="ev_th_action">จัดการ</th>
+              <th class="mobile-only-cell" data-i18n="ev_th_detail">รายละเอียด</th>
             </tr>
           </thead>
           <tbody id="evLogsTableBody">
@@ -384,14 +389,14 @@
     <div id="credit-tab" class="tab-content">
       <!-- Credit Tracker Card -->
       <div class="cute-card" id="creditTrackerCard">
-        <h2 class="card-title"><i class="fa-solid fa-credit-card"></i> บัตรเครดิตค้างชำระ (Credit Tracker)</h2>
-        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;">
+        <h2 class="card-title"><i class="fa-solid fa-credit-card"></i> <span data-i18n="credit_title">บัตรเครดิตค้างชำระ (Credit Tracker)</span></h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px;" data-i18n="credit_subtitle">
           รายการรูดบัตรค้างจ่ายสะสม (ยอดเงินสดยังไม่ถูกหักจนกว่าจะทำรายการจ่ายบิล)
         </p>
 
         <!-- ตัวกรองแยกตามประเภทบัตร -->
         <div class="credit-filter-bar" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; padding: 10px; background-color: var(--bg-color); border-radius: 16px; border: 2px solid var(--border-color);">
-          <button type="button" class="credit-filter-btn active" onclick="setCreditCardFilter('all')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">ทั้งหมด 📂</button>
+          <button type="button" class="credit-filter-btn active" onclick="setCreditCardFilter('all')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;" data-i18n="credit_filter_all">ทั้งหมด 📂</button>
           <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Kbank')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Kbank</button>
           <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('BBL')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">BBL</button>
           <button type="button" class="credit-filter-btn" onclick="setCreditCardFilter('Truepay Next')" style="padding: 6px 12px; border-radius: 12px; border: 2px solid var(--border-color); background-color: var(--card-bg); color: var(--text-color); font-family: var(--font-main); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;">Truepay Next</button>
@@ -405,20 +410,20 @@
 
         <!-- แสดงยอดค้างชำระรวม -->
         <div style="display: flex; justify-content: space-between; font-weight: 500; font-size: 0.9rem; margin-bottom: 15px; border-top: 2px solid var(--border-color); padding-top: 10px;">
-          <span>ยอดค้างชำระรวมทั้งหมด:</span>
+          <span data-i18n="credit_total_unpaid">ยอดค้างชำระรวมทั้งหมด:</span>
           <span id="totalUnpaidCredit" style="color: var(--expense-color); font-weight: 600;">0.00 ฿</span>
         </div>
         
         <div id="creditActionArea" style="display: none; border-top: 2px dashed var(--border-color); padding-top: 15px;">
           <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 500; margin-bottom: 12px;">
-            <span>ยอดที่เลือกชำระ:</span>
+            <span data-i18n="credit_selected_amount">ยอดที่เลือกชำระ:</span>
             <span id="selectedCreditAmount" style="color: var(--income-color); font-weight: 600;">0.00 ฿</span>
           </div>
           <div class="form-group" style="margin-bottom: 12px;">
-            <label for="creditPayDate" style="font-size: 0.85rem; font-weight: 500;"><i class="fa-solid fa-calendar-check"></i> วันที่ชำระบิลบัตรเครดิต (หักเงินสด)</label>
+            <label for="creditPayDate" style="font-size: 0.85rem; font-weight: 500;"><i class="fa-solid fa-calendar-check"></i> <span data-i18n="credit_pay_date">วันที่ชำระบิลบัตรเครดิต (หักเงินสด)</span></label>
             <input type="date" id="creditPayDate" class="form-control" style="padding: 8px 12px; font-size: 0.85rem;">
           </div>
-          <button type="button" class="btn-cute" onclick="payCreditTransactions()" style="padding: 10px; font-size: 0.95rem; background-color: var(--income-color); box-shadow: 0 4px 0px #4FA5A4; margin-top: 5px;">
+          <button type="button" class="btn-cute" onclick="payCreditTransactions()" style="padding: 10px; font-size: 0.95rem; background-color: var(--income-color); box-shadow: 0 4px 0px #4FA5A4; margin-top: 5px;" data-i18n="credit_confirm_btn">
             ชำระยอดที่เลือก 💸 (หักเงินสดจริงเดือนนี้)
           </button>
         </div>
@@ -431,33 +436,34 @@
   <div id="changePasswordModal" class="modal" style="display: none;">
     <div class="modal-content">
       <span class="close-btn" onclick="closeChangePasswordModal()">&times;</span>
-      <h2 class="modal-title"><i class="fa-solid fa-key"></i> เปลี่ยนรหัสผ่านส่วนตัว 🌸</h2>
+      <h2 class="modal-title"><i class="fa-solid fa-key"></i> <span data-i18n="modal_pw_title">เปลี่ยนรหัสผ่านส่วนตัว 🌸</span></h2>
       <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
         <div class="form-group" style="text-align: left;">
-          <label for="oldPassword"><i class="fa-solid fa-lock"></i> รหัสผ่านเดิม (Old Password)</label>
-          <input type="password" id="oldPassword" class="form-control" placeholder="กรอกรหัสผ่านเดิม..." required>
+          <label for="oldPassword"><i class="fa-solid fa-lock"></i> <span data-i18n="modal_pw_old">รหัสผ่านเดิม (Old Password)</span></label>
+          <input type="password" id="oldPassword" class="form-control" data-i18n-placeholder="placeholder_old_pw" placeholder="กรอกรหัสผ่านเดิม..." required>
         </div>
         <div class="form-group" style="text-align: left; margin-top: 15px;">
-          <label for="newPassword"><i class="fa-solid fa-key"></i> รหัสผ่านใหม่ (New Password)</label>
-          <input type="password" id="newPassword" class="form-control" placeholder="กรอกรหัสผ่านใหม่..." required>
+          <label for="newPassword"><i class="fa-solid fa-key"></i> <span data-i18n="modal_pw_new">รหัสผ่านใหม่ (New Password)</span></label>
+          <input type="password" id="newPassword" class="form-control" data-i18n-placeholder="placeholder_new_pw" placeholder="กรอกรหัสผ่านใหม่..." required>
         </div>
         <div class="form-group" style="text-align: left; margin-top: 15px;">
-          <label for="confirmNewPassword"><i class="fa-solid fa-check-double"></i> ยืนยันรหัสผ่านใหม่ (Confirm Password)</label>
-          <input type="password" id="confirmNewPassword" class="form-control" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง..." required>
+          <label for="confirmNewPassword"><i class="fa-solid fa-check-double"></i> <span data-i18n="modal_pw_confirm">ยืนยันรหัสผ่านใหม่ (Confirm Password)</span></label>
+          <input type="password" id="confirmNewPassword" class="form-control" data-i18n-placeholder="placeholder_confirm_pw" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง..." required>
         </div>
         <div id="changePasswordError" style="color: var(--expense-color); font-size: 0.85rem; margin-top: 10px; display: none;"></div>
         <div id="changePasswordSuccess" style="color: #2E7D32; font-size: 0.85rem; margin-top: 10px; display: none;"></div>
-        <button type="submit" class="btn-cute" style="margin-top: 20px;">บันทึกรหัสผ่านใหม่ ✨</button>
+        <button type="submit" class="btn-cute" style="margin-top: 20px;" data-i18n="modal_pw_save">บันทึกรหัสผ่านใหม่ ✨</button>
       </form>
     </div>
   </div>
 
   <!-- Footer -->
   <footer>
-    <p>พัฒนาด้วยความรัก 💖 สำหรับสมาชิกในครอบครัวและรถ EV ของเรา | ปี 2026</p>
+    <p data-i18n="footer">พัฒนาด้วยความรัก 💖 สำหรับสมาชิกในครอบครัวและรถ EV ของเรา | ปี 2026</p>
   </footer>
 
   <!-- JS Logic -->
+  <script src="js/translations.js"></script>
   <script src="js/app.js?v=1.0.3"></script>
 </body>
 </html>

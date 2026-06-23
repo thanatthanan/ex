@@ -1550,4 +1550,30 @@ footer {
   box-shadow: none;
 }
 
+/* Language Toggle Button */
+.lang-toggle-btn {
+  background-color: var(--input-bg);
+  border: 2px solid var(--border-color);
+  color: var(--text-color);
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.2s ease, transform 0.1s ease;
+  box-shadow: 0 4px 0px var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.lang-toggle-btn:hover {
+  background-color: var(--border-color);
+  transform: translateY(-2px);
+}
+.lang-toggle-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
 

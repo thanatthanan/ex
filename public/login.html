@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>เข้าสู่ระบบครอบครัวอบอุ่น 🏠 | Family Account</title>
+  <title data-i18n="login_title">เข้าสู่ระบบครอบครัวอบอุ่น 🏠 | Family Account</title>
   <!-- CSS Styles -->
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="stylesheet" href="css/style.css?v=1.0.2">
@@ -15,12 +15,19 @@
       if (theme === 'dark') {
         document.documentElement.classList.add('dark-mode');
       }
+      const lang = localStorage.getItem('lang') || 'th';
+      document.documentElement.setAttribute('lang', lang);
     })();
   </script>
 </head>
 <body class="login-body light-theme">
 
-  <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
+  <div style="position: absolute; top: 20px; right: 20px; z-index: 10; display: flex; align-items: center; gap: 10px;">
+    <!-- Toggle Language Button -->
+    <button id="langToggleBtn" onclick="toggleLang()" class="lang-toggle-btn" title="Change Language / เปลี่ยนภาษา 🌐">
+      EN
+    </button>
+    <!-- Toggle Dark Mode Button -->
     <button id="themeToggleBtn" onclick="toggleTheme()" class="theme-toggle-btn" title="เปลี่ยนธีม 🌓">
       <i class="fa-solid fa-moon"></i>
     </button>
@@ -29,45 +36,45 @@
   <div class="login-card">
     <div class="login-logo">
       <i class="fa-solid fa-house-chimney-heart"></i>
-      ex<span>pense</span>
+      ex<span data-i18n="logo_span">pense</span>
     </div>
-    <p class="login-subtitle" id="loginSubtitle">ลงบันทึกรายรับ-รายจ่ายของครอบครัวเรา 🌸</p>
+    <p class="login-subtitle" id="loginSubtitle" data-i18n="login_card_subtitle">ลงบันทึกรายรับ-รายจ่ายของครอบครัวเรา 🌸</p>
 
     <!-- สำหรับเลือกสมาชิกครอบครัวแบบด่วน -->
     <div class="family-selection" id="familySelection">
       <div class="family-member" onclick="selectMember('dad', 'คุณพ่อ 👨')">
         <div class="avatar-large">👨</div>
-        <div class="member-name">คุณพ่อ</div>
+        <div class="member-name" data-i18n="login_dad">คุณพ่อ</div>
       </div>
       <div class="family-member" onclick="selectMember('mom', 'คุณแม่ 👩')">
         <div class="avatar-large">👩</div>
-        <div class="member-name">คุณแม่</div>
+        <div class="member-name" data-i18n="login_mom">คุณแม่</div>
       </div>
       <div class="family-member" onclick="selectMember('kid', 'ลูกชาย 👦')">
         <div class="avatar-large">👦</div>
-        <div class="member-name">ลูกชาย</div>
+        <div class="member-name" data-i18n="login_kid">ลูกชาย</div>
       </div>
     </div>
 
     <!-- ฟอร์มเข้าสู่ระบบปกติ -->
     <form id="loginForm" onsubmit="handleLogin(event)">
       <div class="form-group" style="text-align: left;">
-        <label for="username"><i class="fa-solid fa-user"></i> ชื่อผู้ใช้ (Username)</label>
-        <input type="text" id="username" class="form-control" placeholder="เลือกสมาชิกด้านบน หรือพิมพ์ชื่อ..." required>
+        <label for="username"><i class="fa-solid fa-user"></i> <span data-i18n="login_label_username">ชื่อผู้ใช้ (Username)</span></label>
+        <input type="text" id="username" class="form-control" data-i18n-placeholder="login_placeholder_username" placeholder="เลือกสมาชิกด้านบน หรือพิมพ์ชื่อ..." required>
       </div>
 
       <div class="form-group" style="text-align: left;">
-        <label for="password"><i class="fa-solid fa-key"></i> รหัสผ่าน (Password)</label>
-        <input type="password" id="password" class="form-control" placeholder="กรอกรหัสผ่าน (เริ่มต้น 1234)..." required>
+        <label for="password"><i class="fa-solid fa-key"></i> <span data-i18n="login_label_pw">รหัสผ่าน (Password)</span></label>
+        <input type="password" id="password" class="form-control" data-i18n-placeholder="login_placeholder_pw" placeholder="กรอกรหัสผ่าน (เริ่มต้น 1234)..." required>
       </div>
 
       <div id="loginError" style="color: var(--expense-color); font-size: 0.85rem; margin-bottom: 15px; display: none;"></div>
 
-      <button type="submit" class="btn-cute">เข้าบ้านกันเถอะ! 🏠</button>
+      <button type="submit" class="btn-cute" data-i18n="login_btn_enter">เข้าบ้านกันเถอะ! 🏠</button>
       
       <!-- LINE Login Button -->
       <a href="#" id="lineLoginBtn" class="btn-line">
-        <i class="fa-brands fa-line" style="font-size: 1.3rem;"></i> เข้าใช้งานด้วย LINE
+        <i class="fa-brands fa-line" style="font-size: 1.3rem;"></i> <span data-i18n="login_btn_line">เข้าใช้งานด้วย LINE</span>
       </a>
     </form>
 
@@ -76,42 +83,86 @@
       <div class="line-profile-card" style="background-color: #E8F5E9; border-radius: 15px; padding: 15px; margin-bottom: 20px; border: 1.5px solid #C8E6C9; text-align: center;">
         <img id="lineAvatarImg" src="" alt="LINE Avatar" style="width: 70px; height: 70px; border-radius: 50%; border: 3px solid #06C755; margin-bottom: 10px; object-fit: cover; display: none;">
         <h3 style="margin: 5px 0; color: #2E7D32; font-family: var(--font-title); font-size: 1.15rem;">
-          สวัสดีคุณ <span id="lineProfileName">ผู้ใช้งาน LINE</span> 🎉
+          <span data-i18n="login_link_title">สวัสดีคุณ</span> <span id="lineProfileName">ผู้ใช้งาน LINE</span> 🎉
         </h3>
-        <p style="font-size: 0.85rem; color: #4E342E; line-height: 1.4; margin: 8px 0 0 0;">
+        <p style="font-size: 0.85rem; color: #4E342E; line-height: 1.4; margin: 8px 0 0 0;" data-i18n="login_link_subtitle">
           พบความเชื่อมโยงกับบัญชี LINE แต่ยังไม่ได้ผูกกับสมาชิกคนไหนในบ้านเลย กรุณาเลือกบัญชีและกรอกรหัสผ่านเพื่อเชื่อมโยงบัญชีและเข้าสู่ระบบจ้า
         </p>
       </div>
 
       <form id="lineLinkForm" onsubmit="handleLineLink(event)">
         <div class="form-group" style="text-align: left;">
-          <label for="linkUsername"><i class="fa-solid fa-user"></i> เลือกสมาชิกในบ้านที่ต้องการผูก</label>
+          <label for="linkUsername"><i class="fa-solid fa-user"></i> <span data-i18n="login_link_label_select">เลือกสมาชิกในบ้านที่ต้องการผูก</span></label>
           <select id="linkUsername" class="form-control" style="width: 100%; height: 42px; border-radius: 10px; border: 1.5px solid var(--border-color); padding: 0 10px;" required>
-            <option value="dad">คุณพ่อ (dad)</option>
-            <option value="mom">คุณแม่ (mom)</option>
-            <option value="kid">ลูกชาย (kid)</option>
+            <option value="dad" data-i18n="login_dad">คุณพ่อ (dad)</option>
+            <option value="mom" data-i18n="login_mom">คุณแม่ (mom)</option>
+            <option value="kid" data-i18n="login_kid">ลูกชาย (kid)</option>
           </select>
         </div>
 
         <div class="form-group" style="text-align: left; margin-top: 15px;">
-          <label for="linkPassword"><i class="fa-solid fa-key"></i> รหัสผ่าน (Password)</label>
-          <input type="password" id="linkPassword" class="form-control" placeholder="กรอกรหัสผ่านเพื่อยืนยัน..." required>
+          <label for="linkPassword"><i class="fa-solid fa-key"></i> <span data-i18n="login_label_pw">รหัสผ่าน (Password)</span></label>
+          <input type="password" id="linkPassword" class="form-control" data-i18n-placeholder="login_link_placeholder_pw" placeholder="กรอกรหัสผ่านเพื่อยืนยัน..." required>
         </div>
 
         <div id="linkError" style="color: var(--expense-color); font-size: 0.85rem; margin-top: 10px; margin-bottom: 10px; display: none;"></div>
 
-        <button type="submit" class="btn-cute" style="margin-top: 15px;">ผูกบัญชีและเข้าบ้าน! 🏠</button>
+        <button type="submit" class="btn-cute" style="margin-top: 15px;" data-i18n="login_link_btn_confirm">ผูกบัญชีและเข้าบ้าน! 🏠</button>
         
-        <a href="#" id="cancelLinkBtn" style="display: block; text-align: center; margin-top: 15px; font-size: 0.85rem; color: var(--text-muted); text-decoration: none;">
+        <a href="#" id="cancelLinkBtn" style="display: block; text-align: center; margin-top: 15px; font-size: 0.85rem; color: var(--text-muted); text-decoration: none;" data-i18n="login_link_btn_cancel">
           ยกเลิกและกลับไปหน้าล็อกอินปกติ
         </a>
       </form>
     </div>
   </div>
 
+  <script src="js/translations.js"></script>
   <script>
     // Detect base path automatically
     const basePath = window.location.pathname.startsWith('/exapp') ? '/exapp' : '';
+
+    // Language Toggle logic
+    let currentLang = localStorage.getItem('lang') || 'th';
+
+    function toggleLang() {
+      const nextLang = currentLang === 'th' ? 'en' : 'th';
+      currentLang = nextLang;
+      document.documentElement.setAttribute('lang', nextLang);
+      localStorage.setItem('lang', nextLang);
+      applyLanguage(nextLang);
+    }
+
+    function applyLanguage(lang) {
+      // Update toggle button text
+      const langBtn = document.getElementById('langToggleBtn');
+      if (langBtn) {
+        langBtn.textContent = lang === 'th' ? 'EN' : 'TH';
+      }
+
+      // Translate all data-i18n elements
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+          // If it contains span inside logo, preserve it
+          if (key === 'logo_span') {
+            el.innerHTML = translations[lang][key];
+          } else {
+            el.textContent = translations[lang][key];
+          }
+        }
+      });
+
+      // Translate data-i18n-placeholder elements
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (translations[lang] && translations[lang][key]) {
+          el.setAttribute('placeholder', translations[lang][key]);
+        }
+      });
+    }
+
+    // Initialize Language UI
+    applyLanguage(currentLang);
 
     // Theme functions
     function toggleTheme() {
@@ -167,11 +218,11 @@
         if (data.success) {
           window.location.href = basePath + '/';
         } else {
-          errorDiv.textContent = data.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+          errorDiv.textContent = data.message || (currentLang === 'th' ? translations.th.alert_conn_failed : translations.en.alert_conn_failed);
           errorDiv.style.display = 'block';
         }
       } catch (error) {
-        errorDiv.textContent = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+        errorDiv.textContent = currentLang === 'th' ? translations.th.alert_conn_error : translations.en.alert_conn_error;
         errorDiv.style.display = 'block';
       }
     }
@@ -197,17 +248,21 @@
         if (data.success) {
           window.location.href = basePath + '/';
         } else {
-          errorDiv.textContent = data.message || 'รหัสผ่านไม่ถูกต้อง หรือเกิดข้อผิดพลาดในการผูกบัญชี';
+          errorDiv.textContent = data.message || (currentLang === 'th' ? 'รหัสผ่านไม่ถูกต้อง หรือเกิดข้อผิดพลาดในการผูกบัญชี' : 'Invalid password or error linking account');
           errorDiv.style.display = 'block';
         }
       } catch (error) {
-        errorDiv.textContent = 'ไม่สามารถผูกบัญชีได้เนื่องจากการเชื่อมต่อมีปัญหา';
+        errorDiv.textContent = currentLang === 'th' ? 'ไม่สามารถผูกบัญชีได้เนื่องจากการเชื่อมต่อมีปัญหา' : 'Cannot link account due to connection error';
         errorDiv.style.display = 'block';
       }
     }
 
     // ตรวจเช็คว่ามีเซสชันอยู่แล้ว หรือต้องการผูกบัญชี LINE หรือไม่
     window.onload = async () => {
+      // Initialize Theme & Lang Icon
+      updateThemeIcon(document.documentElement.classList.contains('dark-mode'));
+      applyLanguage(currentLang);
+
       const urlParams = new URLSearchParams(window.location.search);
       const isLineUnlinked = urlParams.get('line_unlinked') === 'true';
 
@@ -251,4 +306,3 @@
   </script>
 </body>
 </html>
-
