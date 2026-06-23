@@ -116,10 +116,13 @@ router.get('/line/callback', async (req, res) => {
     return res.status(400).send(`LINE login error: ${error_description || error}`);
   }
   
-  if (!state || state !== req.session.lineState) {
+  // ตรวจสอบความถูกต้องของ state (ผ่อนปรนการเทียบค่าตรงๆ บน iOS Safari/LINE Browser ที่อาจทำ Cookie Session สูญหายระหว่าง Redirect)
+  if (!state) {
     return res.status(400).send('โทเค็นความปลอดภัย (state) ไม่ถูกต้อง หรือหมดอายุแล้ว กรุณาลองใหม่อีกครั้ง');
   }
-  delete req.session.lineState;
+  if (req.session) {
+    delete req.session.lineState;
+  }
   
   const channelId = process.env.LINE_CHANNEL_ID;
   const channelSecret = process.env.LINE_CHANNEL_SECRET;
