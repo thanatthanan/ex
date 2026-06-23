@@ -1265,8 +1265,7 @@ footer {
     color: var(--text-color);
   }
 
-  /* ซ่อนข้อมูลตั้งแต่ คนบันทึก จนถึง จัดการ บนมือถือโดยปกติ */
-  .ev-table td[data-label="คนบันทึก"],
+  /* ซ่อนข้อมูลตั้งแต่ สถานีชาร์จ จนถึง จัดการ บนมือถือโดยปกติ */
   .ev-table td[data-label="สถานีชาร์จ"],
   .ev-table td[data-label="หัวชาร์จ"],
   .ev-table td[data-label="ปริมาณไฟ"],
@@ -1277,7 +1276,6 @@ footer {
   }
 
   /* แสดงรายละเอียดเมื่อกดขยายแถว */
-  .ev-table tr.expanded td[data-label="คนบันทึก"],
   .ev-table tr.expanded td[data-label="สถานีชาร์จ"],
   .ev-table tr.expanded td[data-label="หัวชาร์จ"],
   .ev-table tr.expanded td[data-label="ปริมาณไฟ"],

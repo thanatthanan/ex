@@ -722,17 +722,21 @@ function calculateDashboardSummary(transactions) {
 
   const balance = incomeTotal - expenseTotal;
 
+  const lang = localStorage.getItem('lang') || 'th';
+  const currency = lang === 'th' ? ' ฿' : ' THB';
+  const locale = lang === 'th' ? 'th-TH' : 'en-US';
+
   // อัปเดตยอดเงินคงเหลือ
   const balEl = document.getElementById('totalBalance');
-  balEl.textContent = `${balance.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿`;
+  balEl.textContent = `${balance.toLocaleString(locale, { minimumFractionDigits: 2 })}${currency}`;
   if (balance >= 0) {
     balEl.style.color = 'var(--income-color)';
   } else {
     balEl.style.color = 'var(--expense-color)';
   }
 
-  document.getElementById('totalIncome').textContent = `${incomeTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿`;
-  document.getElementById('totalExpense').textContent = `${expenseTotal.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿`;
+  document.getElementById('totalIncome').textContent = `${incomeTotal.toLocaleString(locale, { minimumFractionDigits: 2 })}${currency}`;
+  document.getElementById('totalExpense').textContent = `${expenseTotal.toLocaleString(locale, { minimumFractionDigits: 2 })}${currency}`;
 }
 
 // บันทึกธุรกรรมการเงิน (รองรับการเพิ่มใหม่และการแก้ไข)
@@ -1123,7 +1127,6 @@ async function fetchEVStatistics() {
 
         tr.innerHTML = `
           <td data-label="${dateHeader}">${formattedDate}</td>
-          <td data-label="${userHeader}">${displayUser}</td>
           <td data-label="${stationHeader}"><strong>${log.station_name || '-'}${branchText}${cabinetText}</strong></td>
           <td data-label="${chargerHeader}">${log.charger_power ? `${log.charger_power} kW` : '-'}</td>
           <td data-label="${energyHeader}">${log.energy_delivered ? `${parseFloat(log.energy_delivered).toFixed(1)} kWh` : '-'}</td>
@@ -1283,11 +1286,11 @@ function startEditTransaction(id) {
       stationCustom.style.display = 'none';
     }
   }
-  document.getElementById('evChargerPower').value = t.charger_power || '';
-  document.getElementById('evEnergyDelivered').value = t.energy_delivered || '';
-  document.getElementById('evOdometer').value = t.odometer || '';
-  document.getElementById('evStartBattery').value = t.start_battery !== null ? t.start_battery : '';
-  document.getElementById('evEndBattery').value = t.end_battery !== null ? t.end_battery : '';
+  document.getElementById('evChargerPower').value = t.charger_power ?? '';
+  document.getElementById('evEnergyDelivered').value = t.energy_delivered ?? '';
+  document.getElementById('evOdometer').value = t.odometer ?? '';
+  document.getElementById('evStartBattery').value = t.start_battery ?? '';
+  document.getElementById('evEndBattery').value = t.end_battery ?? '';
 
   // ปรับ UI ให้เป็นโหมดแก้ไข
   const formTitle = document.querySelector('#transactionFormCard .card-title');
@@ -1593,12 +1596,13 @@ async function handleLogout() {
 
 // ฟังก์ชันอัปเดตคำอธิบายรายการชาร์จรถ EV อัตโนมัติจากชื่อสถานีและสาขา
 function updateEVDescription() {
-  const categorySelect = document.getElementById('categoryId');
-  if (!categorySelect) return;
-  const selectedText = categorySelect.options[categorySelect.selectedIndex]?.text || '';
+  const categoryIdVal = document.getElementById('categoryId')?.value;
+  if (!categoryIdVal) return;
+  const category = categoriesList.find(c => String(c.id) === String(categoryIdVal));
+  const selectedText = category ? category.name : '';
   
   // ทำการอัปเดตเฉพาะเมื่อเป็นหมวดหมู่ EV เท่านั้น
-  if (selectedText.includes('EV') || selectedText.includes('ชาร์จไฟ')) {
+  if (selectedText.toLowerCase().includes('ev') || selectedText.includes('ชาร์จไฟ') || selectedText.includes('ชาร์จรถ')) {
     const stationSelect = document.getElementById('evStationNameSelect').value;
     const stationName = stationSelect === 'อื่นๆ' ? document.getElementById('evStationNameCustom').value : stationSelect;
     const branch = document.getElementById('evStationBranch').value.trim();

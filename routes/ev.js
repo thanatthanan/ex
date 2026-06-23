@@ -19,7 +19,7 @@ router.get('/stats', requireLogin, async (req, res) => {
       FROM ev_logs e
       JOIN transactions t ON e.transaction_id = t.id
       JOIN users u ON t.user_id = u.id
-      ORDER BY e.odometer DESC, t.transaction_date DESC
+      ORDER BY t.transaction_date DESC, e.id DESC
     `);
 
     // 2. คำนวณภาพรวมสถิติ
