@@ -170,7 +170,7 @@ window.onload = async () => {
   setTodayDate();
 
   // 3. ตั้งค่าปีและเดือนในส่วนตัวกรองเป็น เดือน/ปี ปัจจุบัน
-  setupFilters();
+  setupFilters(true);
 
   // 4. ดึงข้อมูลหมวดหมู่และสมาชิกในครอบครัว
   await Promise.all([
@@ -234,7 +234,7 @@ function setTodayDate() {
 }
 
 // ตั้งค่าตัวกรองเริ่มต้น
-function setupFilters() {
+function setupFilters(isInitial = false) {
   const today = new Date();
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
@@ -242,7 +242,7 @@ function setupFilters() {
   // ตั้งค่าเดือน
   const filterMonthSelect = document.getElementById('filterMonth');
   if (filterMonthSelect) {
-    if (!filterMonthSelect.value) {
+    if (isInitial || !filterMonthSelect.value) {
       filterMonthSelect.value = currentMonth;
     }
   }
@@ -250,7 +250,7 @@ function setupFilters() {
   // ตั้งค่าปี (ย้อนหลัง 2 ปี และไปข้างหน้า 1 ปี)
   const filterYearSelect = document.getElementById('filterYear');
   if (filterYearSelect) {
-    const selectedYear = filterYearSelect.value ? parseInt(filterYearSelect.value) : currentYear;
+    const selectedYear = (isInitial || !filterYearSelect.value) ? currentYear : parseInt(filterYearSelect.value);
     filterYearSelect.innerHTML = '';
     const lang = localStorage.getItem('lang') || 'th';
     for (let y = currentYear - 2; y <= currentYear + 1; y++) {
