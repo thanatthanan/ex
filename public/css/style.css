@@ -20,6 +20,7 @@
   --input-bg: #FCFAF7;
   --input-focus-bg: #FFFFFF;
   --shadow-color: rgba(142, 124, 119, 0.15);
+  color-scheme: light;
 }
 
 :root.dark-mode {
@@ -40,6 +41,7 @@
   --input-bg: #261D1C;
   --input-focus-bg: #2F2423;
   --shadow-color: rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }
 
 * {
@@ -432,6 +434,7 @@ header {
   font-weight: 500;
   cursor: pointer;
   background-color: var(--card-bg);
+  color: var(--text-color);
   text-align: center;
 }
 
@@ -572,6 +575,7 @@ header {
   border-radius: 12px;
   font-family: var(--font-main);
   background-color: var(--input-bg);
+  color: var(--text-color);
 }
 
 /* Transaction List */
