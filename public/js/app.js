@@ -1823,7 +1823,9 @@ function handleSlipUpload(event) {
 
 // ฟังก์ชันวิเคราะห์และดึงข้อมูลสลิป
 function parseSlipText(text) {
-  const cleanText = text.replace(/,/g, ''); // เอา comma ออกเพื่อไม่ให้กวนใจ Regex ตัวเลข
+  // นำมารวมสระอำที่สะกดแยกแบบ Nikhahit (U+0E4D) + U+0E32 ให้กลายเป็น U+0E33 (ำ) เพื่อป้องกันจับคู่ภาษาไทยไม่ติด
+  const normalizedText = text.replace(/\u0E4D\u0E32/g, '\u0E33');
+  const cleanText = normalizedText.replace(/,/g, ''); // เอา comma ออกเพื่อไม่ให้กวนใจ Regex ตัวเลข
   const lang = localStorage.getItem('lang') || 'th';
 
   // 1. ดึงยอดเงิน (Amount)
@@ -1844,86 +1846,99 @@ function parseSlipText(text) {
   }
 
   // 2. ดึงวันที่ทำรายการ (Date)
-  const thaiMonths = {
-    'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
-    'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11,
-    'มกราคม': 0, 'กุมภาพันธ์': 1, 'มีนาคม': 2, 'เมษายน': 3, 'พฤษภาคม': 4, 'มิถุนายน': 5,
-    'กรกฎาคม': 6, 'สิงหาคม': 7, 'กันยายน': 8, 'ตุลาคม': 9, 'พฤศจิกายน': 10, 'ธันวาคม': 11
-  };
-  
-  const engMonths = {
-    'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
-    'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11,
-    'january': 0, 'february': 1, 'march': 2, 'april': 3, 'june': 5,
-    'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
-  };
-
   let parsedDate = null;
-  
-  // ลองดึงวันเดือนปีรูปแบบไทย เช่น 23 มิ.ย. 2569 หรือ 23 มิ.ย. 69
-  const thaiDateMatch = cleanText.match(/(\d{1,2})\s*([ก-๙\.]+)\s*(\d{2,4})/);
-  if (thaiDateMatch) {
-    const day = parseInt(thaiDateMatch[1]);
-    const monthStr = thaiDateMatch[2].replace(/\./g, '').trim();
-    let year = parseInt(thaiDateMatch[3]);
-    
-    let monthIndex = -1;
-    for (const key in thaiMonths) {
-      if (key.replace(/\./g, '') === monthStr || monthStr.includes(key.replace(/\./g, ''))) {
-        monthIndex = thaiMonths[key];
-        break;
-      }
-    }
-    
-    if (monthIndex !== -1) {
-      if (year > 2500) {
-        year -= 543;
-      } else if (year < 100) {
-        year += (year >= 43 ? 1957 : 2000); // แปลงพ.ศ. ย่อ หรือ ค.ศ. ย่อ
-      }
-      parsedDate = new Date(year, monthIndex, day);
-    }
+
+  // ลองดึงจากเลขอ้างอิง (Ref No. / เลขที่อ้างอิง) ก่อน เนื่องจากปกติจะมีประทับตราวันเวลา ค.ศ. YYYYMMDD ไว้ในเลขยาวๆ เสมอ และแม่นยำที่สุด
+  const refNoMatch = cleanText.match(/\b(202\d)(\d{2})(\d{2})\d{6,}\b/);
+  if (refNoMatch) {
+    const year = parseInt(refNoMatch[1]);
+    const month = parseInt(refNoMatch[2]) - 1;
+    const day = parseInt(refNoMatch[3]);
+    parsedDate = new Date(year, month, day);
   }
 
-  // ลองดึงรูปแบบอังกฤษ เช่น 23 Jun 2026
+  // หากไม่ได้จาก Ref No. ให้ดึงตามรูปแบบข้อความปกติ
   if (!parsedDate) {
-    const engDateMatch = cleanText.match(/(\d{1,2})\s*([a-zA-Z]+)\s*(\d{4})/);
-    if (engDateMatch) {
-      const day = parseInt(engDateMatch[1]);
-      const monthStr = engDateMatch[2].toLowerCase();
-      const year = parseInt(engDateMatch[3]);
+    const thaiMonths = {
+      'ม.ค.': 0, 'ก.พ.': 1, 'มี.ค.': 2, 'เม.ย.': 3, 'พ.ค.': 4, 'มิ.ย.': 5,
+      'ก.ค.': 6, 'ส.ค.': 7, 'ก.ย.': 8, 'ต.ค.': 9, 'พ.ย.': 10, 'ธ.ค.': 11,
+      'มกราคม': 0, 'กุมภาพันธ์': 1, 'มีนาคม': 2, 'เมษายน': 3, 'พฤษภาคม': 4, 'มิถุนายน': 5,
+      'กรกฎาคม': 6, 'สิงหาคม': 7, 'กันยายน': 8, 'ตุลาคม': 9, 'พฤศจิกายน': 10, 'ธันวาคม': 11
+    };
+    
+    const engMonths = {
+      'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+      'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11,
+      'january': 0, 'february': 1, 'march': 2, 'april': 3, 'june': 5,
+      'july': 6, 'august': 7, 'september': 8, 'october': 9, 'november': 10, 'december': 11
+    };
+
+    // ลองดึงวันเดือนปีรูปแบบไทย เช่น 23 มิ.ย. 2569 หรือ 23 มิ.ย. 69
+    const thaiDateMatch = cleanText.match(/(\d{1,2})\s*([ก-๙\.]+)\s*(\d{2,4})/);
+    if (thaiDateMatch) {
+      const day = parseInt(thaiDateMatch[1]);
+      const monthStr = thaiDateMatch[2].replace(/\./g, '').trim();
+      let year = parseInt(thaiDateMatch[3]);
       
       let monthIndex = -1;
-      for (const key in engMonths) {
-        if (monthStr.startsWith(key)) {
-          monthIndex = engMonths[key];
+      for (const key in thaiMonths) {
+        if (key.replace(/\./g, '') === monthStr || monthStr.includes(key.replace(/\./g, ''))) {
+          monthIndex = thaiMonths[key];
           break;
         }
       }
+      
       if (monthIndex !== -1) {
+        if (year > 2500) {
+          year -= 543;
+        } else if (year < 100) {
+          year += (year >= 43 ? 1957 : 2000); // แปลงพ.ศ. ย่อ หรือ ค.ศ. ย่อ
+        }
         parsedDate = new Date(year, monthIndex, day);
+      }
+    }
+
+    // ลองดึงรูปแบบอังกฤษ เช่น 23 Jun 2026
+    if (!parsedDate) {
+      const engDateMatch = cleanText.match(/(\d{1,2})\s*([a-zA-Z]+)\s*(\d{4})/);
+      if (engDateMatch) {
+        const day = parseInt(engDateMatch[1]);
+        const monthStr = engDateMatch[2].toLowerCase();
+        const year = parseInt(engDateMatch[3]);
+        
+        let monthIndex = -1;
+        for (const key in engMonths) {
+          if (monthStr.startsWith(key)) {
+            monthIndex = engMonths[key];
+            break;
+          }
+        }
+        if (monthIndex !== -1) {
+          parsedDate = new Date(year, monthIndex, day);
+        }
+      }
+    }
+
+    // ลองดึงรูปแบบตัวเลข เช่น 23/06/2026 หรือ 23-06-2569
+    if (!parsedDate) {
+      const slashDateMatch = cleanText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (slashDateMatch) {
+        const day = parseInt(slashDateMatch[1]);
+        const month = parseInt(slashDateMatch[2]) - 1;
+        let year = parseInt(slashDateMatch[3]);
+        if (year > 2500) year -= 543;
+        else if (year < 100) year += 2000;
+        parsedDate = new Date(year, month, day);
       }
     }
   }
 
-  // ลองดึงรูปแบบตัวเลข เช่น 23/06/2026 หรือ 23-06-2569
-  if (!parsedDate) {
-    const slashDateMatch = cleanText.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if (slashDateMatch) {
-      const day = parseInt(slashDateMatch[1]);
-      const month = parseInt(slashDateMatch[2]) - 1;
-      let year = parseInt(slashDateMatch[3]);
-      if (year > 2500) year -= 543;
-      else if (year < 100) year += 2000;
-      parsedDate = new Date(year, month, day);
-    }
-  }
-
-  // 3. ดึงข้อมูลบันทึกช่วยจำและแนะนำหมวดหมู่เบื้องต้น
+  // 3. ดึงข้อมูลบันทึกช่วยจำจากผู้รับเงินโอน (Recipient)
   let memoText = '';
-  const toReceiverMatch = cleanText.match(/(?:เพื่อเข้าบัญชี|โอนไปยัง|ผู้รับโอน|โอนให้|นาย|นาง|นางสาว|บจก|บริษัท|to:?)\s*([a-zA-Zก-๙\s]+)/i);
+  // ค้นหาคำระบุผู้รับโอนแทนการค้นหาผู้โอน เพื่อหลีกเลี่ยงการหยิบชื่อเจ้าของสลิปมาแสดง
+  const toReceiverMatch = cleanText.match(/(?:ไปที่|ผู้รับโอน|ผู้รับเงิน|เข้าบัญชี|โอนไปยัง|to|receiver)\D*([a-zA-Zก-๙\s\.\-0-9]+)/i);
   if (toReceiverMatch && toReceiverMatch[1]) {
-    memoText = toReceiverMatch[1].trim().split('\n')[0].substring(0, 30); // เอาเฉพาะบรรทัดแรกและสั้นๆ
+    memoText = toReceiverMatch[1].trim().split('\n')[0].trim().substring(0, 30);
   }
 
   // กรอกข้อมูลเข้าฟอร์ม
