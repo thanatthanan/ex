@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const cron = require('node-cron');
 require('dotenv').config({ path: path.join(__dirname, '.env') }); // โหลด .env file
 const db = require('./config/database');
 
@@ -263,10 +264,21 @@ initializeDatabase();
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const evRoutes = require('./routes/ev');
+const { router: lineBotRoutes, sendDailySummaryToLine } = require('./routes/lineBot');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/ev', evRoutes);
+app.use('/api/line-bot', lineBotRoutes);
+
+// ตั้งตารางเวลาส่งสรุปรายจ่ายเข้ากลุ่ม LINE ทุกวันเวลา 21:00 น. (ตามเขตเวลาประเทศไทย)
+cron.schedule('0 21 * * *', async () => {
+  console.log('⏰ กำลังรันงานอัตโนมัติ: ส่งรายงานสรุปรายรับ-รายจ่ายของวันนี้');
+  await sendDailySummaryToLine();
+}, {
+  scheduled: true,
+  timezone: "Asia/Bangkok"
+});
 
 // เส้นทางสำหรับ Debug ฐานข้อมูล (ชั่วคราว)
 app.get('/api/db-debug', async (req, res) => {

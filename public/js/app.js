@@ -2003,4 +2003,38 @@ function parseSlipText(text) {
   alert(alertMsg);
 }
 
+// ฟังก์ชันส่งรายงานสรุปรายจ่ายประจำวันเข้า LINE แบบแมนนวล
+async function triggerManualDailySummary() {
+  const lang = localStorage.getItem('lang') || 'th';
+  
+  // ซ่อนเมนูโปรไฟล์หลังจากคลิก
+  const menu = document.getElementById('profileDropdownMenu');
+  const trigger = document.getElementById('userProfileTrigger');
+  if (menu) menu.classList.remove('show');
+  if (trigger) trigger.classList.remove('active');
+
+  const confirmMsg = lang === 'th'
+    ? 'คุณต้องการส่งรายงานสรุปรายรับ-รายจ่ายของวันนี้ไปยัง LINE ทันทีใช่หรือไม่?'
+    : 'Do you want to send today\'s financial summary to LINE immediately?';
+    
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch(`${basePath}/api/line-bot/send-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      alert(data.message);
+    } else {
+      alert(data.message || (lang === 'th' ? 'เกิดข้อผิดพลาดในการส่งข้อมูล' : 'Error sending data.'));
+    }
+  } catch (error) {
+    console.error('Error sending manual daily summary to LINE:', error);
+    alert(lang === 'th' ? 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ในขณะนี้' : 'Cannot connect to the server at this time.');
+  }
+}
+
 
