@@ -15,7 +15,7 @@ router.get('/stats', requireLogin, async (req, res) => {
   try {
     // 1. ดึงบันทึกประวัติ EV ทั้งหมดที่เรียงตามเลขไมล์จากมากไปน้อย
     const [logs] = await db.query(`
-      SELECT e.*, t.amount, t.transaction_date, t.description, t.payment_method, t.credit_status, u.display_name
+      SELECT e.*, t.amount, t.transaction_date, t.description, t.payment_method, t.credit_status, t.credit_card_name, t.meal_type, t.recipient, t.category_id, u.display_name
       FROM ev_logs e
       JOIN transactions t ON e.transaction_id = t.id
       JOIN users u ON t.user_id = u.id

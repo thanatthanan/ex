@@ -1158,8 +1158,11 @@ async function fetchEVStatistics() {
 // เริ่มเข้าสู่โหมดแก้ไขรายการ
 function startEditTransaction(id) {
   let t = currentTransactions.find(item => item.id === id);
-  if (!t) {
-    const evLog = currentEVLogs.find(item => item.transaction_id === id);
+  const evLog = currentEVLogs.find(item => item.transaction_id === id);
+
+  if (t && evLog) {
+    t = { ...t, ...evLog };
+  } else if (!t) {
     if (evLog) {
       t = {
         id: evLog.transaction_id,
