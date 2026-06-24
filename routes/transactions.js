@@ -10,13 +10,14 @@ function requireLogin(req, res, next) {
   next();
 }
 
-// 1. ดึงรายการธุรกรรมทั้งหมด (รองรับการกรองตามวันที่ เดือน และประเภท)
+// 1. ดึงรายการธุรกรรมทั้งหมด (รองรับการกรองตามวันที่ เดือน และประเภท พร้อม Pagination)
 router.get('/', requireLogin, async (req, res) => {
   const { date, month, year, type, user_id, credit_status } = req.query;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 50; // default 50 รายการต่อหน้า
+  const offset = (page - 1) * limit;
   
-  let query = `
-    SELECT t.*, c.name as category_name, c.icon as category_icon, c.color as category_color, u.display_name, u.avatar,
-           e.station_name, e.station_branch, e.station_cabinet, e.charger_power, e.energy_delivered, e.start_battery, e.end_battery, e.odometer
+  let baseQuery = `
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
     JOIN users u ON t.user_id = u.id
@@ -27,33 +28,58 @@ router.get('/', requireLogin, async (req, res) => {
 
   // กรองตามวันที่ หรือปี/เดือน ปัจจุบันหากส่งมา
   if (date) {
-    query += ` AND DATE(t.transaction_date) = ? `;
+    baseQuery += ` AND DATE(t.transaction_date) = ? `;
     params.push(date);
   } else if (month && year) {
-    query += ` AND MONTH(t.transaction_date) = ? AND YEAR(t.transaction_date) = ? `;
+    baseQuery += ` AND MONTH(t.transaction_date) = ? AND YEAR(t.transaction_date) = ? `;
     params.push(month, year);
   }
   
   if (type) {
-    query += ` AND t.type = ? `;
+    baseQuery += ` AND t.type = ? `;
     params.push(type);
   }
 
   if (credit_status) {
-    query += ` AND t.credit_status = ? `;
+    baseQuery += ` AND t.credit_status = ? `;
     params.push(credit_status);
   }
 
   // บังคับกรองรายบุคคลเสมอ ป้องกันข้อมูลปนกัน (หากไม่ระบุ ให้ดึงเฉพาะของตนเอง)
   const targetUserId = user_id || req.session.userId;
-  query += ` AND t.user_id = ? `;
+  baseQuery += ` AND t.user_id = ? `;
   params.push(targetUserId);
 
-  query += ` ORDER BY t.transaction_date DESC, t.id DESC LIMIT 1000 `;
-
   try {
-    const [rows] = await db.query(query, params);
-    res.json({ success: true, transactions: rows });
+    // 1. หาจำนวนรายการทั้งหมดที่ตรงตามเงื่อนไข (Total Count)
+    const countQuery = `SELECT COUNT(*) as totalCount ${baseQuery}`;
+    const [countResult] = await db.query(countQuery, params);
+    const totalCount = countResult[0].totalCount;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // 2. ดึงข้อมูลรายการด้วย LIMIT และ OFFSET
+    let selectQuery = `
+      SELECT t.*, c.name as category_name, c.icon as category_icon, c.color as category_color, u.display_name, u.avatar,
+             e.station_name, e.station_branch, e.station_cabinet, e.charger_power, e.energy_delivered, e.start_battery, e.end_battery, e.odometer
+      ${baseQuery}
+      ORDER BY t.transaction_date DESC, t.id DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    // โคลนพารามิเตอร์แล้วเพิ่ม limit, offset สำหรับ query ข้อมูลจริง
+    const queryParams = [...params, limit, offset];
+    const [rows] = await db.query(selectQuery, queryParams);
+
+    res.json({ 
+      success: true, 
+      transactions: rows,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: page,
+        limit
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงรายการเงิน' });

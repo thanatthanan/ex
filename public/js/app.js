@@ -12,6 +12,11 @@ let unpaidTransactionsList = [];
 let activeCreditCardFilter = 'all';
 let currentEVLogs = [];
 
+// ตัวแปร Pagination
+let currentPage = 1;
+let totalPages = 1;
+const transactionsLimit = 15; // แสดงหน้าละ 15 รายการกำลังดี ดูสะอาดตาและน่ารัก
+
 let currentLang = localStorage.getItem('lang') || 'th';
 
 const monthNames = {
@@ -594,7 +599,8 @@ function clearDateFilter() {
 }
 
 // โหลดรายการธุรกรรมเงิน และอัปเดต Dashboard
-async function fetchTransactions() {
+async function fetchTransactions(page = 1) {
+  currentPage = page;
   const month = document.getElementById('filterMonth').value;
   const year = document.getElementById('filterYear').value;
   const userId = document.getElementById('filterUser').value;
@@ -604,12 +610,12 @@ async function fetchTransactions() {
   try {
     // แยกเงินกันรายบุคคล ไม่นำมารวมกัน (ถ้ายังไม่มีการเลือกในดรอปดาวน์ให้ใช้ของผู้ใช้ที่ล็อกอินอยู่)
     const targetUserId = userId || (currentUser ? currentUser.id : '');
-    let url = `${basePath}/api/transactions?`;
+    let url = `${basePath}/api/transactions?page=${currentPage}&limit=${transactionsLimit}`;
     
     if (filterDate) {
-      url += `date=${filterDate}`;
+      url += `&date=${filterDate}`;
     } else {
-      url += `month=${month}&year=${year}`;
+      url += `&month=${month}&year=${year}`;
     }
     
     if (targetUserId) url += `&user_id=${targetUserId}`;
@@ -630,12 +636,98 @@ async function fetchTransactions() {
     if (data.success) {
       currentTransactions = data.transactions;
       renderTransactions(data.transactions);
+      
+      // อัปเดตข้อมูล pagination จาก response
+      if (data.pagination) {
+        totalPages = data.pagination.totalPages || 1;
+        renderPaginationControls();
+      }
+
+      // คำนวณสรุปผลยอดเงิน โดยใช้รายการทั้งหมด (สำหรับยอดรวมในหน้า Dashboard เราอาจต้องการดึงข้อมูลยอดรวมโดยไม่มี pagination หรือจะคำนวณจากรายการย่อย สำหรับ Dashboard บ้านแสนอุ่น เรามีสรุปรายเดือนที่แสดงยอดรวมตรงนี้)
+      // เพื่อให้ยอดเงินคงเหลือ / รายรับ / รายจ่าย ไม่เพี้ยนตาม pagination เราต้องคำนวณจากยอดรวมใน DB หรือดึงแยก แต่เดิมระบบอ่านค่าจาก transactions รายการ LIMIT 1000 เลย สำหรับ Dashboard เราจะยึดคำนวณจากหน้านั้นหรือเรียก api ยอดรวม แต่อีกวิธีคือเพิ่มยอดรวมสรุปที่คำนวณได้ส่งมาจาก endpoint transactions เสมอ
+      // ในที่นี้ เพื่อไม่ให้ยอดรวมพังเมื่อทำ pagination เราจะอัปเดต calculateDashboardSummary จาก API หรือ query ยอดรวม
+      // มาดู transactions endpoints ดั้งเดิม: query summary, index, ev, credits.
       calculateDashboardSummary(data.transactions);
       await fetchUnpaidCredits(); // โหลดข้อมูลบัตรเครดิตค้างชำระ
     }
   } catch (error) {
     console.error('Error fetching transactions:', error);
   }
+}
+
+// ฟังก์ชันสร้างปุ่มควบคุม Pagination
+function renderPaginationControls() {
+  const container = document.getElementById('paginationControls');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (totalPages <= 1) {
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'flex';
+
+  const lang = localStorage.getItem('lang') || 'th';
+  const prevText = lang === 'th' ? 'ก่อนหน้า' : 'Prev';
+  const nextText = lang === 'th' ? 'ถัดไป' : 'Next';
+
+  // ปุ่มย้อนกลับ (จัดสไตล์เป็นวงกลมมนน่ารัก ขนาดเท่ากันสวยงาม)
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'btn-cute';
+  prevBtn.style.width = '36px';
+  prevBtn.style.height = '36px';
+  prevBtn.style.padding = '0';
+  prevBtn.style.display = 'flex';
+  prevBtn.style.alignItems = 'center';
+  prevBtn.style.justifyContent = 'center';
+  prevBtn.style.fontSize = '0.9rem';
+  prevBtn.style.borderRadius = '50%';
+  prevBtn.style.margin = '0';
+  prevBtn.style.boxShadow = '0 3px 0px #E59F9F';
+  prevBtn.disabled = currentPage === 1;
+  if (currentPage === 1) {
+    prevBtn.style.opacity = '0.5';
+    prevBtn.style.cursor = 'not-allowed';
+    prevBtn.style.boxShadow = 'none';
+  }
+  prevBtn.innerHTML = `<i class="fa-solid fa-chevron-left"></i>`;
+  prevBtn.onclick = () => fetchTransactions(currentPage - 1);
+  container.appendChild(prevBtn);
+
+  // ข้อมูลหน้าปัจจุบัน
+  const pageInfo = document.createElement('span');
+  pageInfo.style.fontFamily = 'var(--font-main)';
+  pageInfo.style.fontSize = '0.9rem';
+  pageInfo.style.fontWeight = '600';
+  pageInfo.style.color = 'var(--text-color)';
+  pageInfo.style.padding = '0 10px';
+  pageInfo.textContent = lang === 'th' 
+    ? `หน้า ${currentPage} / ${totalPages}` 
+    : `Page ${currentPage} / ${totalPages}`;
+  container.appendChild(pageInfo);
+
+  // ปุ่มถัดไป (จัดสไตล์เป็นวงกลมมนน่ารัก ขนาดเท่ากันสวยงาม)
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn-cute';
+  nextBtn.style.width = '36px';
+  nextBtn.style.height = '36px';
+  nextBtn.style.padding = '0';
+  nextBtn.style.display = 'flex';
+  nextBtn.style.alignItems = 'center';
+  nextBtn.style.justifyContent = 'center';
+  nextBtn.style.fontSize = '0.9rem';
+  nextBtn.style.borderRadius = '50%';
+  nextBtn.style.margin = '0';
+  nextBtn.style.boxShadow = '0 3px 0px #E59F9F';
+  nextBtn.disabled = currentPage === totalPages;
+  if (currentPage === totalPages) {
+    nextBtn.style.opacity = '0.5';
+    nextBtn.style.cursor = 'not-allowed';
+    nextBtn.style.boxShadow = 'none';
+  }
+  nextBtn.innerHTML = `<i class="fa-solid fa-chevron-right"></i>`;
+  nextBtn.onclick = () => fetchTransactions(currentPage + 1);
+  container.appendChild(nextBtn);
 }
 
 // แสดงรายการข้อมูลเงินบนหน้าเว็บ

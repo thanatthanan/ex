@@ -28,9 +28,36 @@ app.use('/api/line-bot/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session สำหรับเก็บสถานะ Login (อายุเซสชัน 1 วัน)
+// นำเข้า express-rate-limit สำหรับป้องกัน Brute-force
+const rateLimit = require('express-rate-limit');
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 นาที
+  max: 20, // จำกัด 20 ครั้งต่อ 15 นาที
+  message: {
+    success: false,
+    message: 'คุณพยายามเข้าสู่ระบบบ่อยเกินไป กรุณาลองใหม่อีกครั้งในภายหลัง (15 นาที)'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ประยุกต์ใช้ loginLimiter กับ route login โดยตรงใน middleware
+app.use('/api/auth/login', loginLimiter);
+
+// นำเข้า express-mysql-session เพื่อเก็บ Session ในฐานข้อมูล MySQL (Persistent Store)
+const MySQLStore = require('express-mysql-session')(session);
+const sessionStore = new MySQLStore({
+  clearExpired: true,
+  checkExpirationInterval: 900000, // ตรวจสอบ session หมดอายุทุกๆ 15 นาที
+  expiration: 86400000, // อายุ session 1 วัน
+  createDatabaseTable: true, // สร้างตาราง sessions ให้อัตโนมัติถ้าไม่มี
+}, db);
+
+// Session สำหรับเก็บสถานะ Login (อายุเซสชัน 1 วัน) พร้อมใช้ MySQL Store
 app.use(session({
+  key: 'family_expense_session',
   secret: process.env.SESSION_SECRET || 'fallback-secret-please-change-in-env',
+  store: sessionStore,
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 ชั่วโมง
