@@ -180,6 +180,72 @@ async function processSlipOCR(imagePath) {
   }
 }
 
+// ฟังก์ชันสำหรับแกะรายละเอียดการชาร์จรถ EV จากข้อความแชท
+function parseEVDetails(text, amount) {
+  let start_battery = null;
+  let end_battery = null;
+  let odometer = null;
+  let energy_delivered = null;
+  let charger_power = null;
+  let station_name = null;
+
+  // 1. หาค่าแบตเตอรี่ เช่น แบต 20-80 หรือ 20-80 หรือ 20to80
+  const batteryMatch = text.match(/(?:แบต|battery)?\s*(\d{1,3})\s*(?:[-–]|to|ถึง)\s*(\d{1,3})/i);
+  if (batteryMatch) {
+    const start = parseInt(batteryMatch[1]);
+    const end = parseInt(batteryMatch[2]);
+    if (start >= 0 && start <= 100 && end >= 0 && end <= 100) {
+      start_battery = start;
+      end_battery = end;
+    }
+  }
+
+  // 2. หาเลขไมล์ เช่น ไมล์ 12450 หรือ เลขไมล์ 12450 หรือ odo 12450
+  const odometerMatch = text.match(/(?:เลขไมล์|ไมล์|odo(?:meter)?|วิ่ง)\s*(\d+)/i);
+  if (odometerMatch) {
+    odometer = parseInt(odometerMatch[1]);
+  }
+
+  // 3. หาหน่วยพลังงานที่ได้รับ เช่น 45 หน่วย หรือ 45 kwh หรือ พลังงาน 45
+  const energyMatch = text.match(/(?:พลังงาน|หน่วยไฟ)?\s*(\d+(?:\.\d+)?)\s*(?:หน่วย|kwh)/i) ||
+                      text.match(/(?:พลังงาน|หน่วยไฟ)\s*(\d+(?:\.\d+)?)/i);
+  if (energyMatch) {
+    energy_delivered = parseFloat(energyMatch[1]);
+  }
+
+  // 4. หากำลังตู้ชาร์จ เช่น 120kw หรือ 120 kw
+  const powerMatch = text.match(/\b(\d+)\s*(?:kw|กิโลวัตต์)\b/i);
+  if (powerMatch) {
+    charger_power = parseInt(powerMatch[1]);
+  }
+
+  // 5. หาสถานีชาร์จ (คำอื่นๆ ที่ไม่ใช่ตัวเลขบอกจำนวนเงิน แบตเตอรี่ ไมล์ หรือกำลังไฟ)
+  let cleanText = text;
+  if (amount) cleanText = cleanText.replace(amount.toString(), '');
+  if (batteryMatch) cleanText = cleanText.replace(batteryMatch[0], '');
+  if (odometerMatch) cleanText = cleanText.replace(odometerMatch[0], '');
+  if (energyMatch) cleanText = cleanText.replace(energyMatch[0], '');
+  if (powerMatch) cleanText = cleanText.replace(powerMatch[0], '');
+  
+  // ลบคำคีย์เวิร์ดเกี่ยวกับชาร์จไฟออก
+  cleanText = cleanText.replace(/(?:ชาร์จไฟรถ|ชาร์จไฟ|ชาร์จ|ตู้ชาร์จ|ev)/gi, '');
+  
+  const words = cleanText.trim().split(/\s+/).filter(w => w.length > 0 && isNaN(w));
+  if (words.length > 0) {
+    station_name = words[0].substring(0, 50);
+  }
+
+  return {
+    station_name,
+    charger_power,
+    energy_delivered,
+    start_battery,
+    end_battery,
+    odometer
+  };
+}
+
+
 
 
 // ฟังก์ชันสร้างรายงานสรุปรายจ่ายสะสมประจำเดือน
@@ -601,24 +667,84 @@ router.post('/webhook', async (req, res) => {
           const { amount, category, description } = parsed;
           const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
 
-          // บันทึกข้อมูลลงฐานข้อมูล
-          await db.query(
-            `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status) 
-             VALUES (?, ?, ?, ?, ?, ?, 'cash', 'none')`,
-            [user.id, amount, category.type, category.id, transactionDate, description]
-          );
+          // ตรวจสอบว่าเป็นรายการชาร์จไฟรถ EV หรือไม่
+          const isEVCharging = /(?:ชาร์จไฟรถ|ชาร์จไฟ|ชาร์จ|ตู้ชาร์จ|ev)/i.test(messageText);
+          let targetCategoryId = category.id;
+          let targetCategoryName = category.name;
+          let targetCategoryType = category.type;
 
-          // ส่งข้อความยืนยันความสำเร็จ
-          const typeLabel = category.type === 'income' ? 'รายรับ 💰' : 'รายจ่าย 💸';
-          let replyMsg = `✅ บันทึกสำเร็จแล้วค่ะ!\n`;
-          replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
-          replyMsg += `🏷️ หมวดหมู่: ${category.name}\n`;
-          replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท (${typeLabel})\n`;
-          if (description) {
-            replyMsg += `📝 รายละเอียด: ${description}`;
+          if (isEVCharging) {
+            // ดึงหมวดหมู่ "ชาร์จไฟรถ EV ⚡" มาแทนหมวดหมู่ที่วิเคราะห์ได้ปกติ
+            const [evCat] = await db.query("SELECT id, name, type FROM categories WHERE name LIKE '%ชาร์จไฟรถ EV%' LIMIT 1");
+            if (evCat.length > 0) {
+              targetCategoryId = evCat[0].id;
+              targetCategoryName = evCat[0].name;
+              targetCategoryType = evCat[0].type;
+            }
           }
-          
-          await sendReplyMessageToLine(token, replyToken, replyMsg);
+
+          const connection = await db.getConnection();
+          try {
+            await connection.beginTransaction();
+
+            // 1. บันทึกลงตาราง transactions
+            const [tResult] = await connection.query(
+              `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status) 
+               VALUES (?, ?, ?, ?, ?, ?, 'cash', 'none')`,
+              [user.id, amount, targetCategoryType, targetCategoryId, transactionDate, description]
+            );
+            const transactionId = tResult.insertId;
+
+            // 2. ถ้าเป็นรายการชาร์จไฟรถ EV ให้บันทึกข้อมูลตู้ชาร์จ/แบตเตอรี่ เพิ่มเติมใน ev_logs
+            let evDetails = null;
+            if (isEVCharging) {
+              evDetails = parseEVDetails(messageText, amount);
+              await connection.query(
+                `INSERT INTO ev_logs (transaction_id, station_name, charger_power, energy_delivered, start_battery, end_battery, odometer) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                [
+                  transactionId,
+                  evDetails.station_name,
+                  evDetails.charger_power,
+                  evDetails.energy_delivered,
+                  evDetails.start_battery,
+                  evDetails.end_battery,
+                  evDetails.odometer
+                ]
+              );
+            }
+
+            await connection.commit();
+
+            // 3. ส่งข้อความยืนยันความสำเร็จ
+            const typeLabel = targetCategoryType === 'income' ? 'รายรับ 💰' : 'รายจ่าย 💸';
+            let replyMsg = `✅ บันทึกสำเร็จแล้วค่ะ!\n`;
+            replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
+            replyMsg += `🏷️ หมวดหมู่: ${targetCategoryName}\n`;
+            replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท (${typeLabel})\n`;
+            
+            if (isEVCharging && evDetails) {
+              if (evDetails.station_name) replyMsg += `🔌 สถานี: ${evDetails.station_name}\n`;
+              if (evDetails.charger_power) replyMsg += `⚡ กำลังไฟ: ${evDetails.charger_power} kW\n`;
+              if (evDetails.energy_delivered) replyMsg += `🔋 พลังงานที่ชาร์จ: ${evDetails.energy_delivered} kWh\n`;
+              if (evDetails.start_battery !== null && evDetails.end_battery !== null) {
+                replyMsg += `📈 ระดับแบตเตอรี่: ${evDetails.start_battery}% ➜ ${evDetails.end_battery}%\n`;
+              }
+              if (evDetails.odometer) replyMsg += `🚗 เลขไมล์รถ: ${evDetails.odometer.toLocaleString('th-TH')} กม.\n`;
+            }
+
+            if (description && !isEVCharging) {
+              replyMsg += `📝 รายละเอียด: ${description}`;
+            }
+            
+            await sendReplyMessageToLine(token, replyToken, replyMsg);
+
+          } catch (dbErr) {
+            await connection.rollback();
+            throw dbErr;
+          } finally {
+            connection.release();
+          }
         }
         
         // --- กรณีส่งรูปภาพสลิป ---
