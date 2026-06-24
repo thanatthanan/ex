@@ -504,8 +504,22 @@ router.post('/webhook', async (req, res) => {
             const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
 
             // ดึงหมวดหมู่สำหรับรายจ่ายอื่นๆ มาเป็นหมวดหมู่เริ่มต้น
-            const [categories] = await db.query("SELECT id FROM categories WHERE name LIKE '%รายจ่ายอื่นๆ%' AND type = 'expense' LIMIT 1");
-            const categoryId = categories.length > 0 ? categories[0].id : 1;
+            let [categories] = await db.query("SELECT id FROM categories WHERE name LIKE '%รายจ่ายอื่นๆ%' AND type = 'expense' LIMIT 1");
+            
+            // หากไม่พบหมวดหมู่ "รายจ่ายอื่นๆ" ให้ค้นหาหมวดหมู่รายจ่าย (expense) ใดก็ได้ในระบบ
+            if (categories.length === 0) {
+              [categories] = await db.query("SELECT id FROM categories WHERE type = 'expense' LIMIT 1");
+            }
+            // หากยังไม่พบอีก ให้ใช้หมวดหมู่ใดก็ได้ที่มีอยู่ในตาราง categories
+            if (categories.length === 0) {
+              [categories] = await db.query("SELECT id FROM categories LIMIT 1");
+            }
+
+            if (categories.length === 0) {
+              throw new Error("ไม่พบข้อมูลหมวดหมู่ (Category) ใดๆ ในฐานข้อมูล กรุณาตั้งค่าหมวดหมู่ก่อนใช้งาน");
+            }
+
+            const categoryId = categories[0].id;
 
             if (amount && amount > 0) {
               await db.query(
