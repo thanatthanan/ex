@@ -129,8 +129,12 @@ router.post('/', requireLogin, async (req, res) => {
 // 4. ลบรายการธุรกรรม (ตาราง ev_logs จะโดนลบอัตโนมัติเนื่องจากติด ON DELETE CASCADE บน Foreign Key)
 router.delete('/:id', requireLogin, async (req, res) => {
   const { id } = req.params;
+  const user_id = req.session.userId;
   try {
-    await db.query('DELETE FROM transactions WHERE id = ?', [id]);
+    const [result] = await db.query('DELETE FROM transactions WHERE id = ? AND user_id = ?', [id, user_id]);
+    if (result.affectedRows === 0) {
+      return res.status(403).json({ success: false, message: 'ไม่พบรายการ หรือคุณไม่มีสิทธิ์ลบรายการนี้' });
+    }
     res.json({ success: true, message: 'ลบรายการออกเรียบร้อยแล้ว' });
   } catch (error) {
     console.error(error);

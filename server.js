@@ -21,6 +21,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// สำหรับ LINE Webhook: ดักจับ raw body ก่อน express.json() เพื่อใช้ตรวจสอบ Signature
+app.use('/api/line-bot/webhook', express.raw({ type: 'application/json' }));
+
 // Middleware สำหรับจัดการ JSON และ Form-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -280,8 +283,16 @@ cron.schedule('0 21 * * *', async () => {
   timezone: "Asia/Bangkok"
 });
 
-// เส้นทางสำหรับ Debug ฐานข้อมูล (ชั่วคราว)
-app.get('/api/db-debug', async (req, res) => {
+// Middleware ตรวจสอบการเข้าสู่ระบบ (ใช้ใน server.js เองสำหรับ debug route)
+function requireLogin(req, res, next) {
+  if (!req.session.userId) {
+    return res.status(401).json({ success: false, message: 'กรุณาเข้าสู่ระบบก่อนดำเนินการ' });
+  }
+  next();
+}
+
+// เส้นทางสำหรับ Debug ฐานข้อมูล (ชั่วคราว — ต้อง Login ก่อนเข้าถึง)
+app.get('/api/db-debug', requireLogin, async (req, res) => {
   try {
     const [users] = await db.query('SELECT id, username, display_name, avatar FROM users');
     const [connectionCharset] = await db.query("SHOW VARIABLES LIKE 'character_set_connection'");

@@ -5,7 +5,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 // ตั้งค่าพูลการเชื่อมต่อ MySQL (Connection Pool)
 // โดยดึงค่าจาก Environment Variables หรือใช้ค่า Default สำหรับ XAMPP
 const pool = mysql.createPool({
-  host: '127.0.0.1',
+  host: process.env.DB_HOST || '127.0.0.1',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'family_expense',

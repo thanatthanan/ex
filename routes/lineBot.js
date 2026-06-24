@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 const https = require('https');
+const crypto = require('crypto');
 
 // Middleware ตรวจสอบการเข้าสู่ระบบ
 function requireLogin(req, res, next) {
@@ -258,14 +259,51 @@ async function parseMessage(text) {
   };
 }
 
-// LINE Webhook Endpoint
+// LINE Webhook Endpoint (raw body ถูกดักจับจาก server.js ก่อน express.json() แล้ว)
 router.post('/webhook', async (req, res) => {
+  // ✅ LINE กำหนดว่า webhook ต้องตอบ 200 เสมอ จึง res.send('OK') ก่อนแล้วค่อย process
+  res.status(200).send('OK');
+
   const token = process.env.LINE_BOT_ACCESS_TOKEN;
-  const events = req.body.events;
+  // LINE Bot (Messaging API) ใช้ Channel Secret ของ Messaging API channel
+  // ไม่ใช่ LINE_CHANNEL_SECRET ซึ่งเป็นของ LINE Login channel
+  const channelSecret = process.env.LINE_BOT_CHANNEL_SECRET || process.env.LINE_CHANNEL_SECRET;
+
+  const rawBody = req.body; // Buffer จาก express.raw
+  const signature = req.headers['x-line-signature'];
+
+  // --- Verify LINE Signature (ถ้ามี secret ตั้งค่าไว้) ---
+  if (channelSecret && signature) {
+    const expectedSig = crypto
+      .createHmac('sha256', channelSecret)
+      .update(rawBody)
+      .digest('base64');
+
+    if (expectedSig !== signature) {
+      console.warn('⚠️ LINE Webhook: Signature ไม่ตรง! ข้ามการ process event');
+      console.warn(`   → ตรวจสอบ LINE_BOT_CHANNEL_SECRET ใน .env`);
+      console.warn(`   → Received : ${signature ? signature.substring(0, 20) + '...' : 'none'}`);
+      console.warn(`   → Expected : ${expectedSig.substring(0, 20)}...`);
+      return; // ตอบ 200 ไปแล้ว แต่ไม่ process
+    }
+    console.log('✅ LINE Webhook: Signature ถูกต้อง');
+  } else if (!signature) {
+    console.warn('⚠️ LINE Webhook: ไม่มี X-Line-Signature (อาจเป็น test request)');
+  }
+
+  let events;
+  try {
+    const parsed = Buffer.isBuffer(rawBody) ? JSON.parse(rawBody.toString()) : rawBody;
+    events = parsed.events;
+  } catch (e) {
+    console.error('❌ LINE Webhook: parse body ล้มเหลว', e.message);
+    return;
+  }
 
   if (!events || !Array.isArray(events)) {
-    return res.status(200).send('OK');
+    return;
   }
+
 
   for (const event of events) {
     // เราจะดึงเฉพาะข้อความประเภท text และมาจาก Chat แบบ User
@@ -334,8 +372,6 @@ router.post('/webhook', async (req, res) => {
       }
     }
   }
-
-  res.status(200).send('OK');
 });
 
 // ฟังก์ชันส่ง Reply Message กลับไปยัง LINE
