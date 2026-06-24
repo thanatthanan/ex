@@ -535,7 +535,8 @@ router.post('/webhook', async (req, res) => {
             }
           } catch (downloadErr) {
             console.error('Download or OCR failed:', downloadErr);
-            await sendReplyMessageToLine(token, replyToken, `❌ เกิดข้อผิดพลาดในการรับภาพสลิป กรุณาลองใหม่อีกครั้งนะคะ`);
+            const errMsg = `❌ เกิดข้อผิดพลาดในการรับภาพสลิป: ${downloadErr.message}\n${downloadErr.stack ? downloadErr.stack.split('\n')[0] : ''}`;
+            await sendReplyMessageToLine(token, replyToken, errMsg);
           }
         }
       } catch (err) {
