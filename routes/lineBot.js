@@ -650,6 +650,41 @@ router.post('/webhook', async (req, res) => {
             continue;
           }
 
+          if (messageText === 'ลบ' || messageText === 'ยกเลิก' || messageText.toLowerCase() === 'undo') {
+            try {
+              // 1. ค้นหารายการล่าสุดของผู้ใช้งานท่านนี้
+              const [lastTrans] = await db.query(
+                `SELECT t.id, t.amount, t.description, t.transaction_date, c.name as category_name
+                 FROM transactions t
+                 JOIN categories c ON t.category_id = c.id
+                 WHERE t.user_id = ? 
+                 ORDER BY t.id DESC LIMIT 1`, 
+                [user.id]
+              );
+
+              if (lastTrans.length === 0) {
+                await sendReplyMessageToLine(token, replyToken, '❌ ไม่พบรายการเงินที่บันทึกโดยคุณในระบบค่ะ');
+              } else {
+                const item = lastTrans[0];
+                
+                // 2. ทำการลบรายการเงิน (ตาราง ev_logs จะโดนลบตามอัติโนมัติเนื่องจากติด ON DELETE CASCADE)
+                await db.query('DELETE FROM transactions WHERE id = ? AND user_id = ?', [item.id, user.id]);
+
+                let replyMsg = `🗑️ ยกเลิกและลบรายการล่าสุดสำเร็จแล้วค่ะ!\n\n`;
+                replyMsg += `💵 ยอดเงิน: ${parseFloat(item.amount).toLocaleString('th-TH')} บาท\n`;
+                replyMsg += `🏷️ หมวดหมู่: ${item.category_name}\n`;
+                if (item.description) replyMsg += `📝 รายละเอียด: ${item.description}\n`;
+                replyMsg += `📅 วันที่: ${new Date(item.transaction_date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+
+                await sendReplyMessageToLine(token, replyToken, replyMsg);
+              }
+            } catch (err) {
+              console.error('Failed to undo last transaction:', err);
+              await sendReplyMessageToLine(token, replyToken, '❌ เกิดข้อผิดพลาดในการยกเลิกรายการล่าสุด');
+            }
+            continue;
+          }
+
           // วิเคราะห์ข้อมูลเงินจากข้อความ
           const parsed = await parseMessage(messageText);
 
