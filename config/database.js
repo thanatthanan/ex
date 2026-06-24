@@ -21,4 +21,7 @@ const pool = mysql.createPool({
 // แปลงเป็น Promise wrapper เพื่อความง่ายในการใช้ async/await
 const promisePool = pool.promise();
 
+// แนบ pool ดั้งเดิมไว้ใน promisePool เผื่อกรณีโมดูลอื่น (เช่น session store) ต้องการใช้ connection pool ตัวจริง
+promisePool.pool = pool;
+
 module.exports = promisePool;

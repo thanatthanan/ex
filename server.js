@@ -46,21 +46,13 @@ app.use('/api/auth/login', loginLimiter);
 
 // นำเข้า express-mysql-session เพื่อเก็บ Session ในฐานข้อมูล MySQL (Persistent Store)
 const MySQLStore = require('express-mysql-session')(session);
-// ดึง connection pool ดั้งเดิมที่ยังไม่แปลงเป็น promise มาใช้ผ่าน db.pool (เราต้องอ้างอิงถึง pool ดั้งเดิม)
-// แต่เนื่องจากใน database.js เรา export promisePool ออกไป
-// วิธีที่ถูกต้องคือการส่ง db connection pool ไป หรือส่ง config options ไปโดยตรง
-// แต่เนื่องจาก config/database.js export promisePool. เพื่อความชัวร์และปลอดภัยที่สุด เราจะดึง config จาก environment หรือส่ง options การเชื่อมต่อฐานข้อมูลเข้าไปที่ MySQLStore โดยตรงเพื่อความชัวร์และไม่กระทบจุดอื่น
-const sessionStoreOptions = {
-  host: process.env.DB_HOST || '127.0.0.1',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'family_expense',
+// ดึง connection pool แท้ๆ ที่ซ่อนอยู่ภายใต้ promise db wrapper เพื่อส่งให้ express-mysql-session ใช้งานโดยตรง
+const sessionStore = new MySQLStore({
   clearExpired: true,
   checkExpirationInterval: 900000, // 15 นาที
   expiration: 86400000, // 1 วัน
   createDatabaseTable: true
-};
-const sessionStore = new MySQLStore(sessionStoreOptions);
+}, db.pool || db);
 
 // Session สำหรับเก็บสถานะ Login (อายุเซสชัน 1 วัน) พร้อมใช้ MySQL Store
 app.use(session({
