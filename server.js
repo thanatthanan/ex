@@ -72,7 +72,6 @@ async function initializeDatabase() {
     // 1. ตรวจสอบการเชื่อมต่อ และเปิดใช้ UTF8MB4 บนการเชื่อมต่อนี้
     await db.query('SET NAMES utf8mb4');
     await db.query('SELECT 1');
-    console.log('✅ เชื่อมต่อ MySQL และตั้งค่า Session UTF8MB4 สำเร็จ!');
 
     // 2. สร้างตารางผู้ใช้
     await db.query(`
@@ -89,7 +88,6 @@ async function initializeDatabase() {
     // ตรวจสอบและขยายคอลัมน์ avatar เป็น VARCHAR(255) เพื่อรองรับ URL ยาวจาก LINE
     try {
       await db.query("ALTER TABLE `users` MODIFY COLUMN `avatar` VARCHAR(255) DEFAULT 'default'");
-      console.log("✅ ปรับปรุงคอลัมน์ avatar เป็น VARCHAR(255) สำเร็จ!");
     } catch (e) {
       console.error("❌ ไม่สามารถปรับปรุงขนาดคอลัมน์ avatar ได้:", e.message);
     }
@@ -99,7 +97,7 @@ async function initializeDatabase() {
       const [columns] = await db.query("SHOW COLUMNS FROM `users` LIKE 'line_id'");
       if (columns.length === 0) {
         await db.query("ALTER TABLE `users` ADD COLUMN `line_id` VARCHAR(255) UNIQUE DEFAULT NULL");
-        console.log("✅ เพิ่มคอลัมน์ line_id ในตาราง users สำเร็จ!");
+        console.log("🆕 [DB Update]: เพิ่มคอลัมน์ line_id ในตาราง users สำเร็จ!");
       }
     } catch (e) {
       console.error("❌ ไม่สามารถตรวจสอบหรือเพิ่มคอลัมน์ line_id ได้:", e.message);
@@ -139,30 +137,30 @@ async function initializeDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
-    // ตรวจสอบและเพิ่มคอลัมน์ที่อาจจะยังไม่มีในตาราง transactions (กรณีฐานข้อมูลเดิมสร้างไว้ก่อนเพิ่มฟีเจอร์)
+    // ตรวจสอบและเพิ่มคอลัมน์ที่อาจจะยังไม่มีในตาราง transactions
     try {
       const [cols] = await db.query("SHOW COLUMNS FROM `transactions`");
       const colNames = cols.map(c => c.Field);
       
       if (!colNames.includes('payment_method')) {
         await db.query("ALTER TABLE `transactions` ADD COLUMN `payment_method` VARCHAR(20) DEFAULT 'cash'");
-        console.log("✅ เพิ่มคอลัมน์ payment_method ในตาราง transactions สำเร็จ!");
+        console.log("🆕 [DB Update]: เพิ่มคอลัมน์ payment_method ในตาราง transactions สำเร็จ!");
       }
       if (!colNames.includes('credit_status')) {
         await db.query("ALTER TABLE `transactions` ADD COLUMN `credit_status` VARCHAR(20) DEFAULT 'none'");
-        console.log("✅ เพิ่มคอลัมน์ credit_status ในตาราง transactions สำเร็จ!");
+        console.log("🆕 [DB Update]: เพิ่มคอลัมน์ credit_status ในตาราง transactions สำเร็จ!");
       }
       if (!colNames.includes('credit_card_name')) {
         await db.query("ALTER TABLE `transactions` ADD COLUMN `credit_card_name` VARCHAR(50) DEFAULT NULL");
-        console.log("✅ เพิ่มคอลัมน์ credit_card_name ในตาราง transactions สำเร็จ!");
+        console.log("🆕 [DB Update]: เพิ่มคอลัมน์ credit_card_name ในตาราง transactions สำเร็จ!");
       }
       if (!colNames.includes('meal_type')) {
         await db.query("ALTER TABLE `transactions` ADD COLUMN `meal_type` VARCHAR(20) DEFAULT NULL");
-        console.log("✅ เพิ่มคอลัมน์ meal_type ในตาราง transactions สำเร็จ!");
+        console.log("🆕 [DB Update]: เพิ่มคอลัมน์ meal_type ในตาราง transactions สำเร็จ!");
       }
       if (!colNames.includes('recipient')) {
         await db.query("ALTER TABLE `transactions` ADD COLUMN `recipient` VARCHAR(50) DEFAULT NULL");
-        console.log("✅ เพิ่มคอลัมน์ recipient ในตาราง transactions สำเร็จ!");
+        console.log("🆕 [DB Update]: เพิ่มคอลัมน์ recipient ในตาราง transactions สำเร็จ!");
       }
     } catch (e) {
       console.error("❌ ไม่สามารถตรวจสอบหรือเพิ่มคอลัมน์ในตาราง transactions ได้:", e.message);
@@ -193,12 +191,14 @@ async function initializeDatabase() {
       await db.query('ALTER TABLE `categories` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
       await db.query('ALTER TABLE `transactions` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
       await db.query('ALTER TABLE `ev_logs` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
-      console.log('✅ แปลงฐานข้อมูลและทุกตารางในระบบเป็น UTF8MB4 สำเร็จ!');
     } catch (e) {
       console.error('❌ ข้อผิดพลาดในการแปลงตารางเป็น UTF8MB4:', e.message);
     }
 
-    // 5.1 ตรวจสอบว่าเคยมีรายการธุรกรรมไหม ถ้ายังไม่มีเลย สามารถรีเซ็ตตารางผู้ใช้และหมวดหมู่เพื่อแก้ปัญหาฟอนต์/อีโมจิเพี้ยนได้
+    // แสดงข้อความสรุปสั้นๆ เมื่อการตรวจสอบโครงสร้างฐานข้อมูลเสร็จสิ้นเรียบร้อย
+    console.log('🗄️  [MySQL]: โครงสร้างฐานข้อมูล UTF8MB4 ตรวจสอบและอัปเดตเป็นปัจจุบันเรียบร้อยแล้ว!');
+
+    // 5.1 ตรวจสอบว่าเคยมีรายการธุรกรรมไหม
     const [transactionsCount] = await db.query('SELECT COUNT(*) as count FROM transactions');
     if (transactionsCount[0].count === 0) {
       await db.query('SET FOREIGN_KEY_CHECKS = 0');
