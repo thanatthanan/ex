@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const Tesseract = require('tesseract.js');
+const Jimp = require('jimp');
 
 // Middleware ตรวจสอบการเข้าสู่ระบบ
 function requireLogin(req, res, next) {
@@ -49,10 +50,20 @@ function downloadLineImage(token, messageId, savePath) {
   });
 }
 
-// ฟังก์ชันแกะข้อมูลยอดเงินจากภาพสลิปฝั่ง Server โดยใช้การจัดคะแนน (Scoring Algorithm)
+// ฟังก์ชันแกะข้อมูลยอดเงินจากภาพสลิปฝั่ง Server โดยใช้การจัดคะแนน (Scoring Algorithm) และ Jimp Preprocessing
 async function processSlipOCR(imagePath) {
+  const tempPath = path.join(path.dirname(imagePath), `prep_${path.basename(imagePath)}`);
   try {
-    const { data: { text } } = await Tesseract.recognize(imagePath, 'tha+eng');
+    // 1. ปรับปรุงรูปภาพด้วย Jimp: แปลงเป็นโทนสีขาวดำคอนทราสต์สูง เพื่อให้อ่านตัวหนังสือสีสว่าง (เช่น ยอดเงินสีเขียวใน KBank) ได้ชัดเจน
+    const img = await Jimp.read(imagePath);
+    await img
+      .greyscale()
+      .contrast(0.9)
+      .threshold({ max: 150 })
+      .writeAsync(tempPath);
+
+    // 2. ส่งภาพที่ปรับปรุงแล้วให้ Tesseract OCR สแกน
+    const { data: { text } } = await Tesseract.recognize(tempPath, 'tha+eng');
     const normalizedText = text.replace(/\u0E4D\u0E32/g, '\u0E33').replace(/,/g, '');
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
@@ -161,6 +172,11 @@ async function processSlipOCR(imagePath) {
   } catch (err) {
     console.error('OCR Error:', err);
     return null;
+  } finally {
+    // ลบไฟล์ภาพชั่วคราวทิ้ง เพื่อไม่ให้เปลืองพื้นที่ของระบบ
+    if (fs.existsSync(tempPath)) {
+      fs.unlink(tempPath, () => {});
+    }
   }
 }
 
