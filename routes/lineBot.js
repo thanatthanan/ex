@@ -3,6 +3,9 @@ const router = express.Router();
 const db = require('../config/database');
 const https = require('https');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const Tesseract = require('tesseract.js');
 
 // Middleware ตรวจสอบการเข้าสู่ระบบ
 function requireLogin(req, res, next) {
@@ -11,6 +14,120 @@ function requireLogin(req, res, next) {
   }
   next();
 }
+
+// ฟังก์ชันสำหรับดาวน์โหลดรูปภาพจาก LINE API
+function downloadLineImage(token, messageId, savePath) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'api-data.line.me',
+      port: 443,
+      path: `/v2/bot/message/${messageId}/content`,
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    };
+
+    const fileStream = fs.createWriteStream(savePath);
+
+    const req = https.request(options, (res) => {
+      if (res.statusCode !== 200) {
+        return reject(new Error(`LINE Content API returned status ${res.statusCode}`));
+      }
+      res.pipe(fileStream);
+      fileStream.on('finish', () => {
+        fileStream.close();
+        resolve(savePath);
+      });
+    });
+
+    req.on('error', (err) => {
+      fs.unlink(savePath, () => {}); // ลบไฟล์ที่โหลดไม่เสร็จ
+      reject(err);
+    });
+    req.end();
+  });
+}
+
+// ฟังก์ชันแกะข้อมูลยอดเงินจากภาพสลิปฝั่ง Server โดยใช้การจัดคะแนน (Scoring Algorithm)
+async function processSlipOCR(imagePath) {
+  try {
+    const { data: { text } } = await Tesseract.recognize(imagePath, 'tha+eng');
+    const normalizedText = text.replace(/\u0E4D\u0E32/g, '\u0E33').replace(/,/g, '');
+    const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+    let possibleAmounts = [];
+    const decimalRegex = /(\d+\.\d{2})/g;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      let match;
+      decimalRegex.lastIndex = 0;
+      
+      while ((match = decimalRegex.exec(line)) !== null) {
+        const val = parseFloat(match[1]);
+        if (isNaN(val)) continue;
+
+        let score = 0;
+        
+        // 1. ค้นหาคีย์เวิร์ดบอกยอดเงินในบรรทัดเดียวกัน
+        if (/(?:จำนวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|บาท|thb|usd|฿|โอน|จ่าย)/i.test(line)) {
+          score += 10;
+        }
+        
+        // 2. ตรวจสอบคีย์เวิร์ดจากบรรทัดก่อนหน้า (สลิปบางธนาคารยอดเงินจะอยู่อีกบรรทัดถัดจากคำอธิบาย)
+        if (i > 0) {
+          const prevLine = lines[i - 1];
+          if (/(?:จำนวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|โอน|จ่าย|านวนเงิน|นวนเงิน|เงิน)/i.test(prevLine)) {
+            score += 8;
+          }
+        }
+
+        // 3. หากเป็นค่าธรรมเนียม ให้ลดคะแนน (ไม่ใช่ยอดเงินหลักของการโอน)
+        if (/(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(line)) {
+          score -= 5;
+        }
+        if (i > 0 && /(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(lines[i - 1])) {
+          score -= 5;
+        }
+
+        // 4. ลดคะแนนหากเป็นข้อมูลวันที่/เวลา (ป้องกันการจำเวลา เช่น 15:47 หรือ ปี 69 เป็นเศษทศนิยม)
+        if (line.includes(':') || line.includes('/') || /\b(202\d|256\d)\b/.test(line)) {
+          score -= 8;
+        }
+        if ((line.match(/\./g) || []).length > 1) {
+          score -= 6;
+        }
+
+        if (val > 1) {
+          score += 1;
+        }
+        
+        possibleAmounts.push({ val, score, line });
+      }
+    }
+
+    if (possibleAmounts.length === 0) {
+      return null;
+    }
+
+    // เรียงลำดับคะแนนจากมากไปน้อย หากคะแนนเท่ากันให้เลือกยอดเงินที่สูงกว่า (ยอดโอนหลักมักจะมากที่สุด)
+    possibleAmounts.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return b.val - a.val;
+    });
+
+    console.log('LINE OCR parsed amounts with scores:', possibleAmounts);
+    return possibleAmounts[0].val;
+  } catch (err) {
+    console.error('OCR Error:', err);
+    return null;
+  }
+}
+
+
 
 // ฟังก์ชันสร้างรายงานสรุปรายจ่ายประจำวัน
 async function generateDailySummaryReport() {
@@ -306,11 +423,9 @@ router.post('/webhook', async (req, res) => {
 
 
   for (const event of events) {
-    // เราจะดึงเฉพาะข้อความประเภท text และมาจาก Chat แบบ User
-    if (event.type === 'message' && event.message.type === 'text') {
+    if (event.type === 'message') {
       const replyToken = event.replyToken;
       const lineUserId = event.source.userId;
-      const messageText = event.message.text.trim();
 
       try {
         // 1. ตรวจสอบว่ามีผู้ใช้งานที่ผูก line_id นี้ไว้หรือไม่
@@ -326,42 +441,103 @@ router.post('/webhook', async (req, res) => {
 
         const user = users[0];
 
-        // 2. วิเคราะห์ข้อมูลเงินจากข้อความ
-        const parsed = await parseMessage(messageText);
+        // --- กรณีส่งข้อความตัวอักษร ---
+        if (event.message.type === 'text') {
+          const messageText = event.message.text.trim();
 
-        if (!parsed) {
-          // หากส่งข้อความทั่วไปที่ไม่มีตัวเลขเงิน ไม่ต้องทำรายการบันทึก แต่อาจตอบคู่มือวิธีพิมพ์
-          await sendReplyMessageToLine(token, replyToken,
-            `พิมพ์บันทึกรายจ่ายได้ง่ายๆ เช่น:\n` +
-            `• "อาหาร 80 ข้าวกะเพรา"\n` +
-            `• "เดินทาง 45 รถไฟฟ้า"\n` +
-            `• "รายรับอื่นๆ 15000 เงินเดือน"`
+          // วิเคราะห์ข้อมูลเงินจากข้อความ
+          const parsed = await parseMessage(messageText);
+
+          if (!parsed) {
+            // หากส่งข้อความทั่วไปที่ไม่มีตัวเลขเงิน ไม่ต้องทำรายการบันทึก แต่อาจตอบคู่มือวิธีพิมพ์
+            await sendReplyMessageToLine(token, replyToken,
+              `พิมพ์บันทึกรายจ่ายได้ง่ายๆ เช่น:\n` +
+              `• "อาหาร 80 ข้าวกะเพรา"\n` +
+              `• "เดินทาง 45 รถไฟฟ้า"\n` +
+              `• "รายรับอื่นๆ 15000 เงินเดือน"`
+            );
+            continue;
+          }
+
+          const { amount, category, description } = parsed;
+          const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
+
+          // บันทึกข้อมูลลงฐานข้อมูล
+          await db.query(
+            `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status) 
+             VALUES (?, ?, ?, ?, ?, ?, 'cash', 'none')`,
+            [user.id, amount, category.type, category.id, transactionDate, description]
           );
-          continue;
-        }
 
-        const { amount, category, description } = parsed;
-        const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
-
-        // 3. บันทึกข้อมูลลงฐานข้อมูล
-        await db.query(
-          `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status) 
-           VALUES (?, ?, ?, ?, ?, ?, 'cash', 'none')`,
-          [user.id, amount, category.type, category.id, transactionDate, description]
-        );
-
-        // 4. ส่งข้อความยืนยันความสำเร็จ
-        const typeLabel = category.type === 'income' ? 'รายรับ 💰' : 'รายจ่าย 💸';
-        let replyMsg = `✅ บันทึกสำเร็จแล้วค่ะ!\n`;
-        replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
-        replyMsg += `🏷️ หมวดหมู่: ${category.name}\n`;
-        replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท (${typeLabel})\n`;
-        if (description) {
-          replyMsg += `📝 รายละเอียด: ${description}`;
+          // ส่งข้อความยืนยันความสำเร็จ
+          const typeLabel = category.type === 'income' ? 'รายรับ 💰' : 'รายจ่าย 💸';
+          let replyMsg = `✅ บันทึกสำเร็จแล้วค่ะ!\n`;
+          replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
+          replyMsg += `🏷️ หมวดหมู่: ${category.name}\n`;
+          replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท (${typeLabel})\n`;
+          if (description) {
+            replyMsg += `📝 รายละเอียด: ${description}`;
+          }
+          
+          await sendReplyMessageToLine(token, replyToken, replyMsg);
         }
         
-        await sendReplyMessageToLine(token, replyToken, replyMsg);
+        // --- กรณีส่งรูปภาพสลิป ---
+        else if (event.message.type === 'image') {
+          const messageId = event.message.id;
+          const fileName = `slip_${Date.now()}_${messageId}.jpg`;
+          const uploadDir = path.join(__dirname, '../public/uploads/slips');
+          
+          // สร้างโฟลเดอร์สำหรับเก็บสลิปถ้ายังไม่มี
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          
+          const savePath = path.join(uploadDir, fileName);
+          const relativePath = `/uploads/slips/${fileName}`; // พาธที่จะเก็บลงฐานข้อมูล
 
+          try {
+            // ทำการดาวน์โหลดและวิเคราะห์รูปภาพ
+            await downloadLineImage(token, messageId, savePath);
+            const amount = await processSlipOCR(savePath);
+
+            const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
+
+            // ดึงหมวดหมู่สำหรับรายจ่ายอื่นๆ มาเป็นหมวดหมู่เริ่มต้น
+            const [categories] = await db.query("SELECT id FROM categories WHERE name LIKE '%รายจ่ายอื่นๆ%' AND type = 'expense' LIMIT 1");
+            const categoryId = categories.length > 0 ? categories[0].id : 1;
+
+            if (amount && amount > 0) {
+              await db.query(
+                `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status, slip_path) 
+                 VALUES (?, ?, 'expense', ?, ?, 'บันทึกสลิปจาก LINE OA (สแกนอัตโนมัติ)', 'cash', 'none', ?)`,
+                [user.id, amount, categoryId, transactionDate, relativePath]
+              );
+
+              let replyMsg = `✅ สแกนและบันทึกสลิปสำเร็จแล้วค่ะ!\n`;
+              replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
+              replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท\n`;
+              replyMsg += `📝 รายละเอียด: บันทึกสลิปจาก LINE OA (สแกนอัตโนมัติ)\n`;
+              replyMsg += `📸 รูปภาพสลิปถูกเก็บเข้าระบบแล้ว`;
+              await sendReplyMessageToLine(token, replyToken, replyMsg);
+            } else {
+              // บันทึกภาพไว้ก่อนแต่เซ็ตยอดเงินเป็น 0
+              await db.query(
+                `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status, slip_path) 
+                 VALUES (?, 0.00, 'expense', ?, ?, 'สลิปจาก LINE OA (ไม่พบยอดเงิน)', 'cash', 'none', ?)`,
+                [user.id, categoryId, transactionDate, relativePath]
+              );
+
+              let replyMsg = `⚠️ บันทึกรูปภาพสลิปเรียบร้อยแล้วค่ะ!\n`;
+              replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
+              replyMsg += `❌ ระบบอ่านยอดเงินไม่สำเร็จ ขอแนะนำให้ตรวจทานยอดเงินและแก้ไขในระบบนะจ๊ะ`;
+              await sendReplyMessageToLine(token, replyToken, replyMsg);
+            }
+          } catch (downloadErr) {
+            console.error('Download or OCR failed:', downloadErr);
+            await sendReplyMessageToLine(token, replyToken, `❌ เกิดข้อผิดพลาดในการรับภาพสลิป กรุณาลองใหม่อีกครั้งนะคะ`);
+          }
+        }
       } catch (err) {
         console.error('Webhook event error:', err);
         try {

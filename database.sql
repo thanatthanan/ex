@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
   `credit_card_name` VARCHAR(50) DEFAULT NULL,
   `meal_type` VARCHAR(20) DEFAULT NULL,
   `recipient` VARCHAR(50) DEFAULT NULL,
+  `slip_path` VARCHAR(255) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE
