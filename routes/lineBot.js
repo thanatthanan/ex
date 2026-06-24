@@ -182,6 +182,69 @@ async function processSlipOCR(imagePath) {
 
 
 
+// ฟังก์ชันสร้างรายงานสรุปรายจ่ายสะสมประจำเดือน
+async function generateMonthlySummaryReport() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1; // 1-indexed
+
+  // 1. ดึงข้อมูลรายรับ/รายจ่าย แยกประเภทของเดือนนี้
+  const [rows] = await db.query(`
+    SELECT t.amount, t.type, c.name as category_name, u.display_name
+    FROM transactions t
+    JOIN categories c ON t.category_id = c.id
+    JOIN users u ON t.user_id = u.id
+    WHERE MONTH(t.transaction_date) = ? AND YEAR(t.transaction_date) = ?
+  `, [month, year]);
+
+  const monthStr = today.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+
+  if (rows.length === 0) {
+    return `📊 สรุปการเงินประจำเดือน\n📅 ประจำเดือน: ${monthStr}\n\n🌸 เดือนนี้ยังไม่มีรายการเงินบันทึกเข้ามาเลยจ้า!`;
+  }
+
+  let totalIncome = 0;
+  let totalExpense = 0;
+  const categories = {};
+  const users = {};
+
+  rows.forEach(r => {
+    const amt = parseFloat(r.amount);
+    if (r.type === 'income') {
+      totalIncome += amt;
+    } else {
+      totalExpense += amt;
+      categories[r.category_name] = (categories[r.category_name] || 0) + amt;
+      users[r.display_name] = (users[r.display_name] || 0) + amt;
+    }
+  });
+
+  const net = totalIncome - totalExpense;
+
+  let msg = `📊 สรุปการเงินประจำเดือน\n📅 ประจำเดือน: ${monthStr}\n\n`;
+  msg += `💰 ภาพรวมเดือนนี้:\n`;
+  msg += `  - รายรับสะสม: ${totalIncome.toLocaleString('th-TH')} บาท 💰\n`;
+  msg += `  - รายจ่ายสะสม: ${totalExpense.toLocaleString('th-TH')} บาท 💸\n`;
+  msg += `  - ยอดสุทธิสะสม: ${net >= 0 ? '+' : ''}${net.toLocaleString('th-TH')} บาท\n\n`;
+
+  if (Object.keys(categories).length > 0) {
+    msg += `🛒 รายจ่ายแยกตามหมวดหมู่:\n`;
+    for (const cat in categories) {
+      msg += `  - ${cat}: ${categories[cat].toLocaleString('th-TH')} บาท\n`;
+    }
+    msg += `\n`;
+  }
+
+  if (Object.keys(users).length > 0) {
+    msg += `👤 รายจ่ายแยกตามคนบันทึก:\n`;
+    for (const user in users) {
+      msg += `  - ${user}: ${users[user].toLocaleString('th-TH')} บาท\n`;
+    }
+  }
+
+  return msg;
+}
+
 // ฟังก์ชันสร้างรายงานสรุปรายจ่ายประจำวัน
 async function generateDailySummaryReport() {
   // 1. ดึงรายการของวันที่ทำรายการปัจจุบัน (ตามเขตเวลาประเทศไทย)
@@ -497,6 +560,29 @@ router.post('/webhook', async (req, res) => {
         // --- กรณีส่งข้อความตัวอักษร ---
         if (event.message.type === 'text') {
           const messageText = event.message.text.trim();
+
+          // ตรวจสอบคีย์เวิร์ดคำสั่งรายงานสรุปทางการเงิน
+          if (messageText === 'สรุป' || messageText === 'สรุปวันนี้') {
+            try {
+              const report = await generateDailySummaryReport();
+              await sendReplyMessageToLine(token, replyToken, report);
+            } catch (summaryErr) {
+              console.error('Failed to generate daily summary:', summaryErr);
+              await sendReplyMessageToLine(token, replyToken, '❌ เกิดข้อผิดพลาดในการดึงรายงานสรุปรายวัน');
+            }
+            continue;
+          }
+
+          if (messageText === 'สรุปเดือนนี้') {
+            try {
+              const report = await generateMonthlySummaryReport();
+              await sendReplyMessageToLine(token, replyToken, report);
+            } catch (summaryErr) {
+              console.error('Failed to generate monthly summary:', summaryErr);
+              await sendReplyMessageToLine(token, replyToken, '❌ เกิดข้อผิดพลาดในการดึงรายงานสรุปรายเดือน');
+            }
+            continue;
+          }
 
           // วิเคราะห์ข้อมูลเงินจากข้อความ
           const parsed = await parseMessage(messageText);
