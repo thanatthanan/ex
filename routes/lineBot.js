@@ -187,6 +187,195 @@ router.post('/send-summary', requireLogin, async (req, res) => {
   }
 });
 
+// Helper สำหรับทำความสะอาดข้อความในการหาหมวดหมู่
+function cleanText(txt) {
+  if (!txt) return '';
+  return txt.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').replace(/[^\w\u0E00-\u0E7F]/g, '').trim().toLowerCase();
+}
+
+// ฟังก์ชันวิเคราะห์ข้อความแชทเพื่อบันทึกรายการเงิน
+async function parseMessage(text) {
+  const parts = text.trim().split(/\s+/);
+  
+  // ค้นหาจำนวนเงิน (ค่าที่เป็นตัวเลขบวกตัวแรก)
+  let amount = null;
+  let amountIndex = -1;
+  for (let i = 0; i < parts.length; i++) {
+    const val = parseFloat(parts[i]);
+    if (!isNaN(val) && isFinite(parts[i]) && val > 0) {
+      amount = val;
+      amountIndex = i;
+      break;
+    }
+  }
+  
+  if (amount === null) {
+    return null; // ไม่ใช่ข้อความสำหรับระบุยอดเงิน
+  }
+  
+  // นำจำนวนเงินออกจากอาร์เรย์เพื่อไม่ให้กวนการหาคำอื่น
+  parts.splice(amountIndex, 1);
+  
+  // ดึงหมวดหมู่ทั้งหมดจากฐานข้อมูล
+  const [categories] = await db.query('SELECT * FROM categories');
+  
+  let matchedCategory = null;
+  let categoryIndex = -1;
+  
+  // ค้นหาคำที่ตรงกับหมวดหมู่ในข้อความที่เหลือ
+  for (let i = 0; i < parts.length; i++) {
+    const partClean = cleanText(parts[i]);
+    if (!partClean) continue;
+    
+    const found = categories.find(cat => {
+      const catClean = cleanText(cat.name);
+      return catClean.includes(partClean) || partClean.includes(catClean);
+    });
+    
+    if (found) {
+      matchedCategory = found;
+      categoryIndex = i;
+      break;
+    }
+  }
+  
+  // ลบหมวดหมู่ออกจากอาร์เรย์หากค้นพบ เพื่อใช้ส่วนที่เหลือเป็นรายละเอียด (description)
+  if (matchedCategory) {
+    parts.splice(categoryIndex, 1);
+  } else {
+    // หากไม่พบหมวดหมู่เลย ให้กำหนดค่าเริ่มต้นเป็น "รายจ่ายอื่นๆ" (หรือหมวดหมู่ประเภทรายจ่ายตัวแรก)
+    matchedCategory = categories.find(cat => cat.name.includes('อื่นๆ') && cat.type === 'expense') || 
+                      categories.find(cat => cat.type === 'expense') || 
+                      categories[0];
+  }
+  
+  const description = parts.join(' ').trim() || null;
+  
+  return {
+    amount,
+    category: matchedCategory,
+    description
+  };
+}
+
+// LINE Webhook Endpoint
+router.post('/webhook', async (req, res) => {
+  const token = process.env.LINE_BOT_ACCESS_TOKEN;
+  const events = req.body.events;
+
+  if (!events || !Array.isArray(events)) {
+    return res.status(200).send('OK');
+  }
+
+  for (const event of events) {
+    // เราจะดึงเฉพาะข้อความประเภท text และมาจาก Chat แบบ User
+    if (event.type === 'message' && event.message.type === 'text') {
+      const replyToken = event.replyToken;
+      const lineUserId = event.source.userId;
+      const messageText = event.message.text.trim();
+
+      try {
+        // 1. ตรวจสอบว่ามีผู้ใช้งานที่ผูก line_id นี้ไว้หรือไม่
+        const [users] = await db.query('SELECT id, display_name FROM users WHERE line_id = ?', [lineUserId]);
+        
+        if (users.length === 0) {
+          await sendReplyMessageToLine(token, replyToken, 
+            `สวัสดีค่ะ! 🌸 บัญชี LINE ของคุณยังไม่ได้เชื่อมต่อกับระบบ "สมุดบัญชีบ้านเรา"\n\n` +
+            `กรุณาเข้าสู่ระบบผ่านเว็บไซต์และทำการ "ผูกบัญชี LINE" ก่อนเริ่มส่งรายการเข้ามานะคะ!`
+          );
+          continue;
+        }
+
+        const user = users[0];
+
+        // 2. วิเคราะห์ข้อมูลเงินจากข้อความ
+        const parsed = await parseMessage(messageText);
+
+        if (!parsed) {
+          // หากส่งข้อความทั่วไปที่ไม่มีตัวเลขเงิน ไม่ต้องทำรายการบันทึก แต่อาจตอบคู่มือวิธีพิมพ์
+          await sendReplyMessageToLine(token, replyToken,
+            `พิมพ์บันทึกรายจ่ายได้ง่ายๆ เช่น:\n` +
+            `• "อาหาร 80 ข้าวกะเพรา"\n` +
+            `• "เดินทาง 45 รถไฟฟ้า"\n` +
+            `• "รายรับอื่นๆ 15000 เงินเดือน"`
+          );
+          continue;
+        }
+
+        const { amount, category, description } = parsed;
+        const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
+
+        // 3. บันทึกข้อมูลลงฐานข้อมูล
+        await db.query(
+          `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status) 
+           VALUES (?, ?, ?, ?, ?, ?, 'cash', 'none')`,
+          [user.id, amount, category.type, category.id, transactionDate, description]
+        );
+
+        // 4. ส่งข้อความยืนยันความสำเร็จ
+        const typeLabel = category.type === 'income' ? 'รายรับ 💰' : 'รายจ่าย 💸';
+        let replyMsg = `✅ บันทึกสำเร็จแล้วค่ะ!\n`;
+        replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
+        replyMsg += `🏷️ หมวดหมู่: ${category.name}\n`;
+        replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท (${typeLabel})\n`;
+        if (description) {
+          replyMsg += `📝 รายละเอียด: ${description}`;
+        }
+        
+        await sendReplyMessageToLine(token, replyToken, replyMsg);
+
+      } catch (err) {
+        console.error('Webhook event error:', err);
+        try {
+          await sendReplyMessageToLine(token, event.replyToken, `❌ เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้งค่ะ`);
+        } catch (replyErr) {
+          console.error('Failed to send error reply:', replyErr);
+        }
+      }
+    }
+  }
+
+  res.status(200).send('OK');
+});
+
+// ฟังก์ชันส่ง Reply Message กลับไปยัง LINE
+function sendReplyMessageToLine(token, replyToken, messageText) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      replyToken: replyToken,
+      messages: [{ type: 'text', text: messageText }]
+    });
+
+    const options = {
+      hostname: 'api.line.me',
+      port: 443,
+      path: '/v2/bot/message/reply',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          resolve(body);
+        } else {
+          reject(new Error(`LINE API returned status ${res.statusCode}: ${body}`));
+        }
+      });
+    });
+
+    req.on('error', (e) => reject(e));
+    req.write(data);
+    req.end();
+  });
+}
+
 module.exports = {
   router,
   sendDailySummaryToLine,
