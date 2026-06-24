@@ -85,10 +85,10 @@ async function processSlipOCR(imagePath) {
 
         // 3. หากเป็นค่าธรรมเนียม ให้ลดคะแนน (ไม่ใช่ยอดเงินหลักของการโอน)
         if (/(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(line)) {
-          score -= 5;
+          score -= 20;
         }
         if (i > 0 && /(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(lines[i - 1])) {
-          score -= 5;
+          score -= 20;
         }
 
         // 4. ลดคะแนนหากเป็นข้อมูลวันที่/เวลา (ป้องกันการจำเวลา เช่น 15:47 หรือ ปี 69 เป็นเศษทศนิยม)
@@ -101,6 +101,10 @@ async function processSlipOCR(imagePath) {
 
         if (val > 1) {
           score += 1;
+        }
+
+        if (val <= 0) {
+          score -= 100; // ยอดโอนหลักต้องไม่เป็น 0 หรือติดลบ
         }
         
         possibleAmounts.push({ val, score, line });
