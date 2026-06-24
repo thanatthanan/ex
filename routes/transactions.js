@@ -10,9 +10,9 @@ function requireLogin(req, res, next) {
   next();
 }
 
-// 1. ดึงรายการธุรกรรมทั้งหมด (รองรับการกรองตามเดือน และประเภท)
+// 1. ดึงรายการธุรกรรมทั้งหมด (รองรับการกรองตามวันที่ เดือน และประเภท)
 router.get('/', requireLogin, async (req, res) => {
-  const { month, year, type, user_id, credit_status } = req.query;
+  const { date, month, year, type, user_id, credit_status } = req.query;
   
   let query = `
     SELECT t.*, c.name as category_name, c.icon as category_icon, c.color as category_color, u.display_name, u.avatar,
@@ -25,8 +25,11 @@ router.get('/', requireLogin, async (req, res) => {
   `;
   const params = [];
 
-  // กรองตามปี/เดือน ปัจจุบันหากส่งมา
-  if (month && year) {
+  // กรองตามวันที่ หรือปี/เดือน ปัจจุบันหากส่งมา
+  if (date) {
+    query += ` AND DATE(t.transaction_date) = ? `;
+    params.push(date);
+  } else if (month && year) {
     query += ` AND MONTH(t.transaction_date) = ? AND YEAR(t.transaction_date) = ? `;
     params.push(month, year);
   }

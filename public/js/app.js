@@ -567,17 +567,51 @@ function checkSelectedCategoryName(selectedText) {
   }
 }
 
+// ฟังก์ชันจัดการเมื่อผู้ใช้เลือกตัวกรองวันที่แบบระบุวัน
+function handleDateFilterChange() {
+  const dateVal = document.getElementById('filterDate').value;
+  if (dateVal) {
+    const d = new Date(dateVal);
+    const m = d.getMonth() + 1;
+    const y = d.getFullYear();
+    document.getElementById('filterMonth').value = m;
+    document.getElementById('filterYear').value = y;
+  }
+  fetchTransactions();
+  // อัปเดตชาร์ตวิเคราะห์ด้วยถ้าเปิดแท็บวิเคราะห์อยู่
+  const activeTab = document.querySelector('.nav-tab.active');
+  if (activeTab && activeTab.getAttribute('onclick') && activeTab.getAttribute('onclick').includes('analytics-tab')) {
+    renderAnalyticsCharts();
+  }
+}
+
+// ฟังก์ชันล้างตัวกรองวันที่เมื่อผู้ใช้เปลี่ยนตัวกรองแบบเลือกเดือน/ปี
+function clearDateFilter() {
+  const filterDate = document.getElementById('filterDate');
+  if (filterDate) {
+    filterDate.value = '';
+  }
+}
+
 // โหลดรายการธุรกรรมเงิน และอัปเดต Dashboard
 async function fetchTransactions() {
   const month = document.getElementById('filterMonth').value;
   const year = document.getElementById('filterYear').value;
   const userId = document.getElementById('filterUser').value;
   const filterPayment = document.getElementById('filterPayment').value;
+  const filterDate = document.getElementById('filterDate') ? document.getElementById('filterDate').value : '';
 
   try {
     // แยกเงินกันรายบุคคล ไม่นำมารวมกัน (ถ้ายังไม่มีการเลือกในดรอปดาวน์ให้ใช้ของผู้ใช้ที่ล็อกอินอยู่)
     const targetUserId = userId || (currentUser ? currentUser.id : '');
-    let url = `${basePath}/api/transactions?month=${month}&year=${year}`;
+    let url = `${basePath}/api/transactions?`;
+    
+    if (filterDate) {
+      url += `date=${filterDate}`;
+    } else {
+      url += `month=${month}&year=${year}`;
+    }
+    
     if (targetUserId) url += `&user_id=${targetUserId}`;
 
     if (filterPayment && filterPayment !== 'all') {
@@ -900,6 +934,7 @@ async function renderAnalyticsCharts() {
   const month = document.getElementById('filterMonth').value;
   const year = document.getElementById('filterYear').value;
   const userId = document.getElementById('filterUser').value;
+  const filterDate = document.getElementById('filterDate') ? document.getElementById('filterDate').value : '';
 
   // อ่านสีธีมปัจจุบันจาก CSS Variables
   const bodyStyle = getComputedStyle(document.body);
@@ -909,7 +944,12 @@ async function renderAnalyticsCharts() {
   const borderColor = bodyStyle.getPropertyValue('--border-color').trim() || '#F3ECE3';
 
   try {
-    let url = `${basePath}/api/transactions?month=${month}&year=${year}`;
+    let url = `${basePath}/api/transactions?`;
+    if (filterDate) {
+      url += `date=${filterDate}`;
+    } else {
+      url += `month=${month}&year=${year}`;
+    }
     if (userId) url += `&user_id=${userId}`;
 
     const res = await fetch(url);

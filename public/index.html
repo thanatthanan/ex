@@ -268,7 +268,7 @@
                 <div class="filter-label">
                   <i class="fa-solid fa-filter"></i> <span data-i18n="filter_label">กรอง:</span>
                 </div>
-                <select id="filterMonth" onchange="fetchTransactions()">
+                <select id="filterMonth" onchange="clearDateFilter(); fetchTransactions()">
                   <option value="1">มกราคม</option>
                   <option value="2">กุมภาพันธ์</option>
                   <option value="3">มีนาคม</option>
@@ -282,9 +282,10 @@
                   <option value="11">พฤศจิกายน</option>
                   <option value="12">ธันวาคม</option>
                 </select>
-                <select id="filterYear" onchange="fetchTransactions()">
+                <select id="filterYear" onchange="clearDateFilter(); fetchTransactions()">
                   <!-- เติมปีโดย JS -->
                 </select>
+                <input type="date" id="filterDate" onchange="handleDateFilterChange()" style="cursor: pointer;">
               </div>
               <div class="filter-group secondary-filters">
                 <select id="filterUser" onchange="fetchTransactions()">
