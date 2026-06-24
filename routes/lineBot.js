@@ -57,65 +57,98 @@ async function processSlipOCR(imagePath) {
     const lines = normalizedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
 
     let possibleAmounts = [];
+
+    // 1. ดึงตัวเลขที่มีทศนิยม 2 ตำแหน่ง (เช่น 2640.00)
     const decimalRegex = /(\d+\.\d{2})/g;
+    // 2. ดึงตัวเลขจำนวนเต็มที่ตามด้วยหน่วยเงิน (รวมถึงคำที่ OCR มักอ่านผิด เช่น un, บาก, บาน)
+    const integerWithUnitRegex = /\b(\d+)\s*(?:บาท|thb|usd|฿|un|บาก|บาน)\b/gi;
+    // 3. ดึงตัวเลขจำนวนเต็มใดๆ ในบรรทัดที่มีคีย์เวิร์ดยอดเงิน
+    const anyIntegerRegex = /\b(\d+)\b/g;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       let match;
+
+      // ตรวจสอบทศนิยมก่อน (ให้คะแนนพื้นฐานสูง)
       decimalRegex.lastIndex = 0;
-      
       while ((match = decimalRegex.exec(line)) !== null) {
         const val = parseFloat(match[1]);
         if (isNaN(val)) continue;
-
-        let score = 0;
-        
-        // 1. ค้นหาคีย์เวิร์ดบอกยอดเงินในบรรทัดเดียวกัน
-        if (/(?:จำนวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|บาท|thb|usd|฿|โอน|จ่าย)/i.test(line)) {
-          score += 10;
-        }
-        
-        // 2. ตรวจสอบคีย์เวิร์ดจากบรรทัดก่อนหน้า (สลิปบางธนาคารยอดเงินจะอยู่อีกบรรทัดถัดจากคำอธิบาย)
-        if (i > 0) {
-          const prevLine = lines[i - 1];
-          if (/(?:จำนวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|โอน|จ่าย|านวนเงิน|นวนเงิน|เงิน)/i.test(prevLine)) {
-            score += 8;
-          }
-        }
-
-        // 3. หากเป็นค่าธรรมเนียม ให้ลดคะแนน (ไม่ใช่ยอดเงินหลักของการโอน)
-        if (/(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(line)) {
-          score -= 20;
-        }
-        if (i > 0 && /(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(lines[i - 1])) {
-          score -= 20;
-        }
-
-        // 4. ลดคะแนนหากเป็นข้อมูลวันที่/เวลา (ป้องกันการจำเวลา เช่น 15:47 หรือ ปี 69 เป็นเศษทศนิยม)
-        if (line.includes(':') || line.includes('/') || /\b(202\d|256\d)\b/.test(line)) {
-          score -= 8;
-        }
-        if ((line.match(/\./g) || []).length > 1) {
-          score -= 6;
-        }
-
-        if (val > 1) {
-          score += 1;
-        }
-
-        if (val <= 0) {
-          score -= 100; // ยอดโอนหลักต้องไม่เป็น 0 หรือติดลบ
-        }
-        
-        possibleAmounts.push({ val, score, line });
+        addPossibleAmount(val, 15, line, i);
       }
+
+      // ตรวจสอบจำนวนเต็มที่มีหน่วยเงินตามหลัง (เช่น 28 un, 70 บาท)
+      integerWithUnitRegex.lastIndex = 0;
+      while ((match = integerWithUnitRegex.exec(line)) !== null) {
+        const val = parseFloat(match[1]);
+        if (isNaN(val)) continue;
+        // ป้องกันการเก็บตัวเลขซ้ำกับทศนิยม
+        if (possibleAmounts.some(p => p.line === line && Math.abs(p.val - val) < 1)) continue;
+        addPossibleAmount(val, 12, line, i);
+      }
+
+      // ตรวจสอบจำนวนเต็มทั่วไปในบรรทัดที่มีคีย์เวิร์ดยอดเงิน
+      if (/(?:จำนวนเงิน|จํานวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|ชำระ|ชําระ|นวนเงิน|ค่าสินค้า)/i.test(line)) {
+        anyIntegerRegex.lastIndex = 0;
+        while ((match = anyIntegerRegex.exec(line)) !== null) {
+          const val = parseFloat(match[1]);
+          if (isNaN(val)) continue;
+          if (possibleAmounts.some(p => p.line === line && Math.abs(p.val - val) < 1)) continue;
+          
+          // ข้ามปี พ.ศ. ค.ศ. หรือตัวเลขอ้างอิงที่ยาวเกินไป
+          if (val === 2569 || val === 2026 || val > 100000) continue; 
+          
+          addPossibleAmount(val, 8, line, i);
+        }
+      }
+    }
+
+    function addPossibleAmount(val, baseScore, line, index) {
+      let score = baseScore;
+
+      // คีย์เวิร์ดบวกคะแนน
+      if (/(?:จำนวนเงิน|จํานวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|ชำระ|ชําระ|นวนเงิน|ค่าสินค้า)/i.test(line)) {
+        score += 10;
+      }
+      
+      if (index > 0) {
+        const prevLine = lines[index - 1];
+        if (/(?:จำนวนเงิน|จํานวนเงิน|ยอดเงิน|ยอดโอน|โอนเงิน|ยอดชำระ|ค่าชาร์จ|amount|net|total|โอน|จ่าย|านวนเงิน|นวนเงิน|เงิน|ชำระ|ชําระ)/i.test(prevLine)) {
+          score += 8;
+        }
+      }
+
+      // คีย์เวิร์ดหักคะแนน
+      if (/(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(line)) {
+        score -= 25;
+      }
+      if (index > 0 && /(?:ค่าธรรมเนียม|fee|ธรรมเนียม)/i.test(lines[index - 1])) {
+        score -= 25;
+      }
+
+      // วันที่และเวลา
+      if (line.includes(':') || line.includes('/') || /\b(202\d|256\d)\b/.test(line)) {
+        score -= 15;
+      }
+
+      // ค่าติดลบหรือ 0
+      if (val <= 0) {
+        score -= 100;
+      }
+      
+      // ตัวเลขที่มีค่าสมเหตุสมผล
+      if (val > 1) {
+        score += 1;
+      }
+
+      possibleAmounts.push({ val, score, line });
     }
 
     if (possibleAmounts.length === 0) {
       return null;
     }
 
-    // เรียงลำดับคะแนนจากมากไปน้อย หากคะแนนเท่ากันให้เลือกยอดเงินที่สูงกว่า (ยอดโอนหลักมักจะมากที่สุด)
+    // เรียงคะแนนจากมากไปน้อย
     possibleAmounts.sort((a, b) => {
       if (b.score !== a.score) {
         return b.score - a.score;
