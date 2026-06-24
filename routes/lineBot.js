@@ -99,7 +99,7 @@ function sendPushMessageToLine(token, to, messageText) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
-        'Content-Length': data.length
+        'Content-Length': Buffer.byteLength(data)
       }
     };
 
