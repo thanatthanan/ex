@@ -124,18 +124,53 @@ function sendPushMessageToLine(token, to, messageText) {
 // ฟังก์ชันรวมในการส่งสรุปรายงานประจำวัน
 async function sendDailySummaryToLine() {
   const token = process.env.LINE_BOT_ACCESS_TOKEN;
-  const destination = process.env.LINE_BOT_DESTINATION_ID;
 
-  if (!token || !destination) {
-    console.warn('⚠️ ไม่สามารถส่งสรุป LINE ได้เนื่องจากขาดการตั้งค่า LINE_BOT_ACCESS_TOKEN หรือ LINE_BOT_DESTINATION_ID ในไฟล์ .env');
+  if (!token) {
+    console.warn('⚠️ ไม่สามารถส่งสรุป LINE ได้เนื่องจากขาดการตั้งค่า LINE_BOT_ACCESS_TOKEN ในไฟล์ .env');
+    return false;
+  }
+
+  // รวบรวมเป้าหมายที่ต้องการส่งข้อความแบบไม่ซ้ำกัน
+  const destinations = new Set();
+
+  try {
+    // ดึง line_id ทั้งหมดของสมาชิกที่มีการเชื่อมต่อไว้
+    const [rows] = await db.query('SELECT line_id FROM users WHERE line_id IS NOT NULL AND line_id != ""');
+    rows.forEach(r => {
+      if (r.line_id && r.line_id.trim() !== '') {
+        destinations.add(r.line_id.trim());
+      }
+    });
+  } catch (error) {
+    console.error('⚠️ เกิดข้อผิดพลาดในการดึงข้อมูล line_id จากฐานข้อมูล:', error.message);
+  }
+
+  // ถ้ามีคีย์เริ่มต้นใน .env ให้ใส่ไว้เป็นตัวเลือกสำรองหรือส่งคู่ขนานกันด้วย
+  if (process.env.LINE_BOT_DESTINATION_ID) {
+    destinations.add(process.env.LINE_BOT_DESTINATION_ID.trim());
+  }
+
+  if (destinations.size === 0) {
+    console.warn('⚠️ ไม่สามารถส่งสรุป LINE ได้เนื่องจากไม่มีข้อมูล LINE User ID หรือ Group ID ในฐานข้อมูลและไฟล์ .env');
     return false;
   }
 
   try {
     const summaryText = await generateDailySummaryReport();
-    await sendPushMessageToLine(token, destination, summaryText);
-    console.log('✅ ส่งสรุปรายวันไปยัง LINE เรียบร้อยแล้ว!');
-    return true;
+    let successCount = 0;
+    
+    // วนลูปส่งหาผู้รับทุกคนทีละคน
+    for (const dest of destinations) {
+      try {
+        await sendPushMessageToLine(token, dest, summaryText);
+        console.log(`✅ ส่งสรุปรายวันไปยัง LINE ID: ${dest} เรียบร้อยแล้ว!`);
+        successCount++;
+      } catch (sendError) {
+        console.error(`❌ ข้อผิดพลาดในการส่งรายงานสรุปไปยัง LINE ID: ${dest} ->`, sendError.message);
+      }
+    }
+
+    return successCount > 0;
   } catch (error) {
     console.error('❌ ข้อผิดพลาดในการส่งรายงานสรุป LINE:', error.message);
     return false;
