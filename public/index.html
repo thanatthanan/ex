@@ -394,8 +394,13 @@
           </thead>
           <tbody id="evLogsTableBody">
             <!-- เติมข้อมูลโดย JS -->
-          </tbody>
         </table>
+        <!-- ปุ่มสลับดูทั้งหมด / ดู 10 รายการ -->
+        <div id="evLogsToggleContainer" style="display: none; text-align: center; margin-top: 15px;">
+          <button type="button" id="btnToggleEVLogsLimit" onclick="toggleEVLogsLimit()" class="btn-cute" style="width: auto; padding: 6px 16px; font-size: 0.85rem; background-color: var(--ev-color); box-shadow: 0 3px 0 #678b99; margin-top: 0;">
+            <i class="fa-solid fa-list-ul"></i> <span>ดูบันทึกทั้งหมด</span>
+          </button>
+        </div>
       </div>
 
     </div>
@@ -710,6 +715,6 @@
   <!-- JS Logic -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="js/translations.js?v=1.0.1"></script>
-  <script src="js/app.js?v=1.0.9"></script>
+  <script src="js/app.js?v=1.1.0"></script>
 </body>
 </html>

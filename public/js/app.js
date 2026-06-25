@@ -11,6 +11,7 @@ let currentTransactions = [];
 let unpaidTransactionsList = [];
 let activeCreditCardFilter = 'all';
 let currentEVLogs = [];
+let showAllEVLogs = false; // ค่าเริ่มต้นแสดงเฉพาะ 10 รายการล่าสุด
 
 // ตัวแปร Pagination
 let currentPage = 1;
@@ -1225,23 +1226,29 @@ async function fetchEVStatistics() {
       document.getElementById('evAvgEfficiency').textContent = stats.totalDistance > 0 ? `${stats.kmPerKWh} km/kWh` : noComp;
       document.getElementById('evTotalDistance').textContent = stats.totalDistance > 0 ? `${stats.totalDistance.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')} km` : minRecords;
 
-      // อัปเดตตารางประวัติ EV
-      const tableBody = document.getElementById('evLogsTableBody');
-      tableBody.innerHTML = '';
-
-      if (logs.length === 0) {
-        const noEvLogs = lang === 'th' ? 'ไม่มีข้อมูลประวัติการชาร์จรถไฟฟ้าเลยจ้า' : 'No EV charging history logs.';
-        tableBody.innerHTML = `
-          <tr>
-            <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
-              ${noEvLogs}
-            </td>
-          </tr>
-        `;
-        return;
+      // จัดการการแสดงผลปุ่มดูทั้งหมด
+      const toggleContainer = document.getElementById('evLogsToggleContainer');
+      const toggleBtn = document.getElementById('btnToggleEVLogsLimit');
+      if (toggleContainer) {
+        if (logs.length > 10) {
+          toggleContainer.style.display = 'block';
+          if (toggleBtn) {
+            const btnSpan = toggleBtn.querySelector('span');
+            if (btnSpan) {
+              btnSpan.textContent = showAllEVLogs
+                ? (lang === 'th' ? 'แสดงน้อยลง' : 'Show less')
+                : (lang === 'th' ? `ดูบันทึกทั้งหมด (${logs.length})` : `Show all records (${logs.length})`);
+            }
+          }
+        } else {
+          toggleContainer.style.display = 'none';
+        }
       }
 
-      logs.forEach((log, index) => {
+      // หั่นรายการตามสถานะปุ่ม
+      const displayLogs = showAllEVLogs ? logs : logs.slice(0, 10);
+
+      displayLogs.forEach((log, index) => {
         const tr = document.createElement('tr');
         const formattedDate = new Date(log.transaction_date).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', {
           day: 'numeric',
@@ -1319,6 +1326,12 @@ async function fetchEVStatistics() {
   } catch (error) {
     console.error('Error fetching EV stats:', error);
   }
+}
+
+// ฟังก์ชันสลับการจำกัดจำนวนแถวตาราง EV
+function toggleEVLogsLimit() {
+  showAllEVLogs = !showAllEVLogs;
+  fetchEVStatistics();
 }
 
 // เริ่มเข้าสู่โหมดแก้ไขรายการ
