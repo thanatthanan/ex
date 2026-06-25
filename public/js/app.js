@@ -980,6 +980,10 @@ function deleteTransaction(id) {
   if (modal && idInput) {
     idInput.value = id;
     modal.style.display = 'flex';
+    // โฟกัสไปที่ปุ่มลบ เพื่อให้กด Enter ได้ทันที
+    setTimeout(() => {
+      document.getElementById('btnConfirmDeleteTransaction')?.focus();
+    }, 50);
   }
 }
 
@@ -2548,6 +2552,10 @@ function clearBudgetPlan() {
     if (confirmBtn) confirmBtn.innerHTML = confirmBtn.innerHTML.replace('🗑_', '🗑️');
 
     modal.style.display = 'flex';
+    // โฟกัสไปที่ปุ่มล้างข้อมูล เพื่อให้กด Enter ได้ทันที
+    setTimeout(() => {
+      document.getElementById('btnConfirmClearBudget')?.focus();
+    }, 50);
   }
 }
 

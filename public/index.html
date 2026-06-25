@@ -635,7 +635,7 @@
         <button type="button" class="btn-cute" onclick="closeConfirmDeleteModal()" style="background-color: var(--border-color); box-shadow: 0 4px 0 var(--text-muted); color: var(--text-color); margin: 0; flex: 1;">
           ยกเลิก
         </button>
-        <button type="button" class="btn-cute" onclick="executeDeleteTransaction()" style="background-color: var(--expense-color); box-shadow: 0 4px 0 #e57982; color: #fff; margin: 0; flex: 1;">
+        <button type="button" id="btnConfirmDeleteTransaction" class="btn-cute" onclick="executeDeleteTransaction()" style="background-color: var(--expense-color); box-shadow: 0 4px 0 #e57982; color: #fff; margin: 0; flex: 1;">
           ยืนยันลบ 🗑️
         </button>
       </div>
@@ -694,7 +694,7 @@
         <button type="button" class="btn-cute" onclick="closeConfirmClearBudgetModal()" style="background-color: var(--border-color); box-shadow: 0 4px 0 var(--text-muted); color: var(--text-color); margin: 0; flex: 1;">
           ยกเลิก
         </button>
-        <button type="button" class="btn-cute" onclick="executeClearBudgetPlan()" style="background-color: var(--expense-color); box-shadow: 0 4px 0 #e57982; color: #fff; margin: 0; flex: 1;">
+        <button type="button" id="btnConfirmClearBudget" class="btn-cute" onclick="executeClearBudgetPlan()" style="background-color: var(--expense-color); box-shadow: 0 4px 0 #e57982; color: #fff; margin: 0; flex: 1;">
           ล้างข้อมูล 🗑️
         </button>
       </div>
@@ -715,6 +715,6 @@
   <!-- JS Logic -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="js/translations.js?v=1.0.1"></script>
-  <script src="js/app.js?v=1.1.1"></script>
+  <script src="js/app.js?v=1.1.2"></script>
 </body>
 </html>
