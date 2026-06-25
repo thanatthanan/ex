@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="title">บ้านแสนอุ่นบันทึกการเงิน 🏠 | Family Expense & EV Tracker</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css?v=1.0.9">
+  <link rel="stylesheet" href="css/style.css?v=1.1.0">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Chart.js CDN สำหรับกราฟวิเคราะห์ -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -472,7 +472,7 @@
         <!-- Left: Add Items -->
         <div class="budget-form-col">
           <!-- Add Income -->
-          <div class="cute-card budget-form-card income-form-card">
+          <form class="cute-card budget-form-card income-form-card" onsubmit="event.preventDefault(); addBudgetItem('income');">
             <h3 class="card-title" style="color: var(--income-color); font-size: 1.1rem;">
               <i class="fa-solid fa-circle-plus"></i> เพิ่มรายรับเดือนหน้า
             </h3>
@@ -484,13 +484,13 @@
               <label><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงิน (บาท)</label>
               <input type="number" id="budgetIncomeAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01">
             </div>
-            <button type="button" class="btn-cute" onclick="addBudgetItem('income')" style="background: var(--income-color); box-shadow: 0 4px 0 #4FA5A4; font-size: 1rem;">
+            <button type="submit" class="btn-cute" style="background: var(--income-color); box-shadow: 0 4px 0 #4FA5A4; font-size: 1rem;">
               <i class="fa-solid fa-plus"></i> เพิ่มรายรับ
             </button>
-          </div>
+          </form>
 
           <!-- Add Expense -->
-          <div class="cute-card budget-form-card expense-form-card" style="margin-top: 20px;">
+          <form class="cute-card budget-form-card expense-form-card" style="margin-top: 20px;" onsubmit="event.preventDefault(); addBudgetItem('expense');">
             <h3 class="card-title" style="color: var(--expense-color); font-size: 1.1rem;">
               <i class="fa-solid fa-circle-minus"></i> เพิ่มรายจ่ายเดือนหน้า
             </h3>
@@ -502,10 +502,10 @@
               <label><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงิน (บาท)</label>
               <input type="number" id="budgetExpenseAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01">
             </div>
-            <button type="button" class="btn-cute" onclick="addBudgetItem('expense')" style="background: var(--expense-color); box-shadow: 0 4px 0 #e57982; font-size: 1rem;">
+            <button type="submit" class="btn-cute" style="background: var(--expense-color); box-shadow: 0 4px 0 #e57982; font-size: 1rem;">
               <i class="fa-solid fa-plus"></i> เพิ่มรายจ่าย
             </button>
-          </div>
+          </form>
         </div>
 
         <!-- Right: Summary + Lists -->
