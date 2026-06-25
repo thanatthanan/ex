@@ -70,6 +70,28 @@ router.get('/', requireLogin, async (req, res) => {
     const queryParams = [...params, limit, offset];
     const [rows] = await db.query(selectQuery, queryParams);
 
+    // คำนวณสรุปยอดเงินทั้งหมด (overall) ของผู้ใช้นี้
+    const [overallResult] = await db.query(
+      `SELECT 
+         SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as totalIncome,
+         SUM(CASE WHEN type = 'expense' AND payment_method != 'credit' THEN amount ELSE 0 END) as totalExpense
+       FROM transactions 
+       WHERE user_id = ?`,
+      [targetUserId]
+    );
+    const overallBalance = (parseFloat(overallResult[0].totalIncome) || 0) - (parseFloat(overallResult[0].totalExpense) || 0);
+
+    // คำนวณสรุปรายรับ/รายจ่ายรวมตามฟิลเตอร์ (เช่น เดือนนี้) โดยไม่คำนึงถึง pagination LIMIT/OFFSET
+    const sumQuery = `
+      SELECT 
+        SUM(CASE WHEN t.type = 'income' THEN t.amount ELSE 0 END) as filteredIncome,
+        SUM(CASE WHEN t.type = 'expense' AND t.payment_method != 'credit' THEN t.amount ELSE 0 END) as filteredExpense
+      ${baseQuery}
+    `;
+    const [sumResult] = await db.query(sumQuery, params);
+    const filteredIncome = parseFloat(sumResult[0].filteredIncome) || 0;
+    const filteredExpense = parseFloat(sumResult[0].filteredExpense) || 0;
+
     res.json({ 
       success: true, 
       transactions: rows,
@@ -78,6 +100,11 @@ router.get('/', requireLogin, async (req, res) => {
         totalPages,
         currentPage: page,
         limit
+      },
+      summary: {
+        overallBalance,
+        filteredIncome,
+        filteredExpense
       }
     });
   } catch (error) {

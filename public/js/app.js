@@ -647,7 +647,7 @@ async function fetchTransactions(page = 1) {
       // เพื่อให้ยอดเงินคงเหลือ / รายรับ / รายจ่าย ไม่เพี้ยนตาม pagination เราต้องคำนวณจากยอดรวมใน DB หรือดึงแยก แต่เดิมระบบอ่านค่าจาก transactions รายการ LIMIT 1000 เลย สำหรับ Dashboard เราจะยึดคำนวณจากหน้านั้นหรือเรียก api ยอดรวม แต่อีกวิธีคือเพิ่มยอดรวมสรุปที่คำนวณได้ส่งมาจาก endpoint transactions เสมอ
       // ในที่นี้ เพื่อไม่ให้ยอดรวมพังเมื่อทำ pagination เราจะอัปเดต calculateDashboardSummary จาก API หรือ query ยอดรวม
       // มาดู transactions endpoints ดั้งเดิม: query summary, index, ev, credits.
-      calculateDashboardSummary(data.transactions);
+      calculateDashboardSummary(data.transactions, data.summary);
       await fetchUnpaidCredits(); // โหลดข้อมูลบัตรเครดิตค้างชำระ
     }
   } catch (error) {
@@ -830,27 +830,34 @@ function renderTransactions(transactions) {
 }
 
 // คำนวณสรุปยอดเงินและอัปเดตการ์ด Dashboard
-function calculateDashboardSummary(transactions) {
+function calculateDashboardSummary(transactions, summary) {
   let incomeTotal = 0;
   let expenseTotal = 0;
-
-    transactions.forEach(t => {
-    const amt = parseFloat(t.amount);
-    if (t.type === 'income') {
-      incomeTotal += amt;
-    } else {
-      // หักเงินสดจริงเฉพาะเมื่อไม่ใช่วิธีรูดบัตร (credit) เพื่อไม่ให้หักเงินซ้ำซ้อนในสมุดบัญชีก่อนโอนเงินจ่ายจริง
-      if (t.payment_method !== 'credit') {
-        expenseTotal += amt;
-      }
-    }
-  });
-
-  const balance = incomeTotal - expenseTotal;
+  let balance = 0;
 
   const lang = localStorage.getItem('lang') || 'th';
   const currency = lang === 'th' ? ' ฿' : ' THB';
   const locale = lang === 'th' ? 'th-TH' : 'en-US';
+
+  if (summary) {
+    // ใช้ยอดเงินทั้งหมดที่ส่งมาจาก Server โดยตรง (ไม่เพี้ยนตามการจัดหน้า pagination)
+    balance = summary.overallBalance;
+    incomeTotal = summary.filteredIncome;
+    expenseTotal = summary.filteredExpense;
+  } else {
+    // Fallback ในกรณีไม่มีค่าสรุปจาก server
+    transactions.forEach(t => {
+      const amt = parseFloat(t.amount);
+      if (t.type === 'income') {
+        incomeTotal += amt;
+      } else {
+        if (t.payment_method !== 'credit') {
+          expenseTotal += amt;
+        }
+      }
+    });
+    balance = incomeTotal - expenseTotal;
+  }
 
   // อัปเดตยอดเงินคงเหลือ
   const balEl = document.getElementById('totalBalance');
@@ -2099,15 +2106,27 @@ function parseSlipText(text) {
     let guessedCategoryName = '';
 
     if (lowerMemo.includes('ชาร์จ') || lowerMemo.includes('bolt') || lowerMemo.includes('ptt') || lowerMemo.includes('elex') || lowerMemo.includes('pea') || lowerMemo.includes('spark') || lowerMemo.includes('ev')) {
-      guessedCategoryName = 'ชาร์จไฟรถ EV ⚡';
+      guessedCategoryName = 'ชาร์จไฟรถ EV';
     } else if (lowerMemo.includes('น้ำมัน') || lowerMemo.includes('shell') || lowerMemo.includes('caltex') || lowerMemo.includes('esso') || lowerMemo.includes('bangchak')) {
       guessedCategoryName = 'น้ำมันรถ';
-    } else if (lowerMemo.includes('อาหาร') || lowerMemo.includes('กิน') || lowerMemo.includes('ข้าว') || lowerMemo.includes('kfc') || lowerMemo.includes('mk') || lowerMemo.includes('food') || lowerMemo.includes('cafe') || lowerMemo.includes('7-eleven') || lowerMemo.includes('เซเว่น')) {
+    } else if (lowerMemo.includes('กาแฟ') || lowerMemo.includes('amazon') || lowerMemo.includes('อเมซอน') || lowerMemo.includes('starbucks') || lowerMemo.includes('ชาไข่มุก') || lowerMemo.includes('เต่าบิน')) {
+      guessedCategoryName = 'เครื่องดื่ม / กาแฟ';
+    } else if (lowerMemo.includes('ขนม') || lowerMemo.includes('เค้ก') || lowerMemo.includes('ไอติม') || lowerMemo.includes('ไอศกรีม') || lowerMemo.includes('cafe') || lowerMemo.includes('คาเฟ่')) {
+      guessedCategoryName = 'ของหวาน / ขนม / คาเฟ่';
+    } else if (lowerMemo.includes('อาหาร') || lowerMemo.includes('กิน') || lowerMemo.includes('ข้าว') || lowerMemo.includes('kfc') || lowerMemo.includes('mk') || lowerMemo.includes('food') || lowerMemo.includes('7-eleven') || lowerMemo.includes('เซเว่น')) {
       guessedCategoryName = 'ค่าอาหารและเครื่องดื่ม';
     } else if (lowerMemo.includes('ไฟ') || lowerMemo.includes('ไฟฟ้า')) {
       guessedCategoryName = 'ค่าไฟฟ้า';
     } else if (lowerMemo.includes('น้ำ') || lowerMemo.includes('ประปา')) {
       guessedCategoryName = 'ค่าน้ำประปา';
+    } else if (lowerMemo.includes('ทางด่วน') || lowerMemo.includes('easy pass') || lowerMemo.includes('easypass') || lowerMemo.includes('m-flow') || lowerMemo.includes('mflow') || lowerMemo.includes('ค่าจอด')) {
+      guessedCategoryName = 'ค่าทางด่วน / ค่าจอดรถ';
+    } else if (lowerMemo.includes('ล้างรถ') || lowerMemo.includes('เปลี่ยนยาง') || lowerMemo.includes('เช็กระยะ') || lowerMemo.includes('ซ่อมรถ')) {
+      guessedCategoryName = 'บำรุงรักษารถ / ล้างรถ';
+    } else if (lowerMemo.includes('netflix') || lowerMemo.includes('youtube') || lowerMemo.includes('spotify') || lowerMemo.includes('disney') || lowerMemo.includes('duolingo') || lowerMemo.includes('icloud') || lowerMemo.includes('googleone') || lowerMemo.includes('เซิฟเวอร์') || lowerMemo.includes('โดเมน') || lowerMemo.includes('server') || lowerMemo.includes('domain')) {
+      guessedCategoryName = 'ค่าบริการรายเดือน (Subscriptions)';
+    } else if (lowerMemo.includes('ทำบุญ') || lowerMemo.includes('บริจาค') || lowerMemo.includes('ของขวัญ') || lowerMemo.includes('ซอง')) {
+      guessedCategoryName = 'ของขวัญ / ทำบุญ';
     }
 
     if (guessedCategoryName) {

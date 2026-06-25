@@ -313,14 +313,22 @@ async function generateMonthlySummaryReport() {
 
 // ฟังก์ชันสร้างรายงานสรุปรายจ่ายประจำวัน
 async function generateDailySummaryReport() {
+  // ดึงวันที่ปัจจุบันตามเวลาประเทศไทย (GMT+7) เพื่อความถูกต้องของข้อมูลและป้องกันปัญหาเขตเวลาเซิร์ฟเวอร์ต่างประเทศ
+  const bangkokDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Bangkok' }));
+  const yyyy = bangkokDate.getFullYear();
+  const mm = String(bangkokDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(bangkokDate.getDate()).padStart(2, '0');
+  const todayThStr = `${yyyy}-${mm}-${dd}`;
+  const todayStr = bangkokDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
   // 1. ดึงรายการของวันที่ทำรายการปัจจุบัน (ตามเขตเวลาประเทศไทย)
   const [rows] = await db.query(`
-    SELECT t.amount, t.type, c.name as category_name, u.display_name
+    SELECT t.amount, t.type, t.payment_method, c.name as category_name, u.display_name
     FROM transactions t
     JOIN categories c ON t.category_id = c.id
     JOIN users u ON t.user_id = u.id
-    WHERE t.transaction_date = DATE(NOW())
-  `);
+    WHERE t.transaction_date = ?
+  `, [todayThStr]);
 
   // 2. ดึงยอดค้างชำระบัตรเครดิตสะสมรวม
   const [creditRows] = await db.query(`
@@ -330,10 +338,47 @@ async function generateDailySummaryReport() {
   `);
   
   const totalUnpaidCredit = creditRows[0].total_unpaid ? parseFloat(creditRows[0].total_unpaid) : 0;
-  const todayStr = new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // 3. ดึงยอดรายรับ/รายจ่ายของเดือนปัจจุบัน (ตามเวลาประเทศไทย)
+  const currentYear = yyyy;
+  const currentMonth = mm;
+  const [monthlyRows] = await db.query(`
+    SELECT t.amount, t.type, t.payment_method
+    FROM transactions t
+    WHERE MONTH(t.transaction_date) = ? AND YEAR(t.transaction_date) = ?
+  `, [currentMonth, currentYear]);
+
+  let monthlyIncome = 0;
+  let monthlyExpense = 0;
+  monthlyRows.forEach(r => {
+    const amt = parseFloat(r.amount);
+    if (r.type === 'income') {
+      monthlyIncome += amt;
+    } else {
+      if (r.payment_method !== 'credit') {
+        monthlyExpense += amt;
+      }
+    }
+  });
+
+  // 4. ดึงยอดคงเหลือทั้งหมด (All-time overall balance)
+  const [overallRows] = await db.query(`
+    SELECT 
+      SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as totalIncome,
+      SUM(CASE WHEN type = 'expense' AND payment_method != 'credit' THEN amount ELSE 0 END) as totalExpense
+    FROM transactions
+  `);
+  const overallBalance = (parseFloat(overallRows[0].totalIncome) || 0) - (parseFloat(overallRows[0].totalExpense) || 0);
 
   if (rows.length === 0) {
-    return `📊 สรุปการเงินประจำวัน\n📅 วันที่: ${todayStr}\n\n🌸 วันนี้ยังไม่มีรายการเงินบันทึกเข้ามาเลยจ้า บ้านเราประหยัดสุดๆ!`;
+    let msg = `📊 สรุปการเงินประจำวัน\n📅 วันที่: ${todayStr}\n\n`;
+    msg += `🌸 วันนี้ยังไม่มีรายการเงินบันทึกเข้ามาเลยจ้า บ้านเราประหยัดสุดๆ!\n\n`;
+    msg += `🏡 ภาพรวมสะสมของบ้านเรา:\n`;
+    msg += `  - เงินคงเหลือทั้งหมด: ${overallBalance.toLocaleString('th-TH')} บาท 🐷\n`;
+    msg += `  - รายรับรวมเดือนนี้: ${monthlyIncome.toLocaleString('th-TH')} บาท 💼\n`;
+    msg += `  - รายจ่ายรวมเดือนนี้: ${monthlyExpense.toLocaleString('th-TH')} บาท 🛒\n\n`;
+    msg += `💳 บัตรเครดิตค้างชำระสะสม: ${totalUnpaidCredit.toLocaleString('th-TH')} บาท 💳`;
+    return msg;
   }
 
   let totalIncome = 0;
@@ -346,7 +391,10 @@ async function generateDailySummaryReport() {
     if (r.type === 'income') {
       totalIncome += amt;
     } else {
-      totalExpense += amt;
+      // หักเงินสดจริงเฉพาะเมื่อไม่ใช่วิธีรูดบัตร (credit) เพื่อให้ตรงกับหน้าแดชบอร์ด
+      if (r.payment_method !== 'credit') {
+        totalExpense += amt;
+      }
       // จัดกลุ่มรายจ่ายตามหมวดหมู่
       categories[r.category_name] = (categories[r.category_name] || 0) + amt;
       // จัดกลุ่มรายจ่ายตามสมาชิกในบ้าน
@@ -361,6 +409,11 @@ async function generateDailySummaryReport() {
   msg += `  - รายรับรวม: ${totalIncome.toLocaleString('th-TH')} บาท 💰\n`;
   msg += `  - รายจ่ายรวม: ${totalExpense.toLocaleString('th-TH')} บาท 💸\n`;
   msg += `  - ยอดสุทธิวันนี้: ${net >= 0 ? '+' : ''}${net.toLocaleString('th-TH')} บาท\n\n`;
+
+  msg += `🏡 ภาพรวมสะสมของบ้านเรา:\n`;
+  msg += `  - เงินคงเหลือทั้งหมด: ${overallBalance.toLocaleString('th-TH')} บาท 🐷\n`;
+  msg += `  - รายรับรวมเดือนนี้: ${monthlyIncome.toLocaleString('th-TH')} บาท 💼\n`;
+  msg += `  - รายจ่ายรวมเดือนนี้: ${monthlyExpense.toLocaleString('th-TH')} บาท 🛒\n\n`;
 
   if (Object.keys(categories).length > 0) {
     msg += `🛒 รายจ่ายแยกตามหมวดหมู่:\n`;
