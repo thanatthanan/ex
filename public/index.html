@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="title">บ้านแสนอุ่นบันทึกการเงิน 🏠 | Family Expense & EV Tracker</title>
   <link rel="icon" type="image/png" href="favicon.png">
-  <link rel="stylesheet" href="css/style.css?v=1.0.3">
+  <link rel="stylesheet" href="css/style.css?v=1.0.7">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Chart.js CDN สำหรับกราฟวิเคราะห์ -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -105,6 +105,7 @@
       <button class="tab-btn" onclick="switchTab('analytics-tab')"><i class="fa-solid fa-chart-pie"></i> <span data-i18n="tab_analytics">กราฟวิเคราะห์</span></button>
       <button class="tab-btn" onclick="switchTab('credit-tab')"><i class="fa-solid fa-credit-card"></i> <span data-i18n="tab_credit">บัตรเครดิต 💳</span></button>
       <button class="tab-btn" onclick="switchTab('ev-tab')"><i class="fa-solid fa-car-battery"></i> <span data-i18n="tab_ev">ชาร์จรถไฟฟ้า ⚡</span></button>
+      <button class="tab-btn" onclick="switchTab('budget-tab')"><i class="fa-solid fa-crystal-ball"></i> <span>วางแผนเดือนหน้า 🔮</span></button>
     </div>
 
     <!-- Tab 1: Transactions Page (Desktop only container) -->
@@ -449,6 +450,123 @@
       </div>
     </div>
 
+    <!-- Tab 5: Next Month Budget Planner -->
+    <div id="budget-tab" class="tab-content">
+      <!-- Header Section -->
+      <div class="budget-planner-header">
+        <div class="budget-header-left">
+          <h2 class="card-title" style="margin-bottom: 6px; font-size: 1.5rem;">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color: #A78BFA;"></i>
+            วางแผนเดือนหน้า
+          </h2>
+          <p id="budgetMonthLabel" style="color: var(--text-muted); font-size: 0.9rem;">กำลังโหลด...</p>
+        </div>
+        <div class="budget-header-right">
+          <button type="button" class="btn-cute" onclick="clearBudgetPlan()" style="width: auto; padding: 8px 18px; font-size: 0.9rem; background: var(--expense-color); box-shadow: 0 3px 0 #e57982; margin-top: 0;">
+            <i class="fa-solid fa-trash"></i> ล้างทั้งหมด
+          </button>
+        </div>
+      </div>
+
+      <div class="budget-layout">
+        <!-- Left: Add Items -->
+        <div class="budget-form-col">
+          <!-- Add Income -->
+          <div class="cute-card budget-form-card income-form-card">
+            <h3 class="card-title" style="color: var(--income-color); font-size: 1.1rem;">
+              <i class="fa-solid fa-circle-plus"></i> เพิ่มรายรับเดือนหน้า
+            </h3>
+            <div class="form-group">
+              <label><i class="fa-solid fa-tag"></i> ชื่อรายการ</label>
+              <input type="text" id="budgetIncomeLabel" class="form-control" placeholder="เช่น เงินเดือน, โบนัส, ค่าเช่า...">
+            </div>
+            <div class="form-group">
+              <label><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงิน (บาท)</label>
+              <input type="number" id="budgetIncomeAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01">
+            </div>
+            <button type="button" class="btn-cute" onclick="addBudgetItem('income')" style="background: var(--income-color); box-shadow: 0 4px 0 #4FA5A4; font-size: 1rem;">
+              <i class="fa-solid fa-plus"></i> เพิ่มรายรับ
+            </button>
+          </div>
+
+          <!-- Add Expense -->
+          <div class="cute-card budget-form-card expense-form-card" style="margin-top: 20px;">
+            <h3 class="card-title" style="color: var(--expense-color); font-size: 1.1rem;">
+              <i class="fa-solid fa-circle-minus"></i> เพิ่มรายจ่ายเดือนหน้า
+            </h3>
+            <div class="form-group">
+              <label><i class="fa-solid fa-tag"></i> ชื่อรายการ</label>
+              <input type="text" id="budgetExpenseLabel" class="form-control" placeholder="เช่น ค่าเช่า, ค่าผ่อนรถ, ค่าไฟ...">
+            </div>
+            <div class="form-group">
+              <label><i class="fa-solid fa-money-bill-wave"></i> จำนวนเงิน (บาท)</label>
+              <input type="number" id="budgetExpenseAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01">
+            </div>
+            <button type="button" class="btn-cute" onclick="addBudgetItem('expense')" style="background: var(--expense-color); box-shadow: 0 4px 0 #e57982; font-size: 1rem;">
+              <i class="fa-solid fa-plus"></i> เพิ่มรายจ่าย
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Summary + Lists -->
+        <div class="budget-summary-col">
+          <!-- Big Balance Result Card -->
+          <div class="budget-result-card" id="budgetResultCard">
+            <div class="budget-result-inner">
+              <div class="budget-result-icon">🔮</div>
+              <div class="budget-result-text">
+                <p class="budget-result-label">คาดว่าจะเหลือใช้เดือนหน้า</p>
+                <p class="budget-result-amount" id="budgetNetAmount">0.00 ฿</p>
+              </div>
+            </div>
+            <div class="budget-result-stats">
+              <div class="budget-stat-pill income-pill">
+                <i class="fa-solid fa-arrow-trend-up"></i>
+                <span>รายรับ</span>
+                <strong id="budgetTotalIncome">0.00 ฿</strong>
+              </div>
+              <div class="budget-stat-pill expense-pill">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+                <span>รายจ่าย</span>
+                <strong id="budgetTotalExpense">0.00 ฿</strong>
+              </div>
+            </div>
+            <!-- Progress bar -->
+            <div class="budget-progress-wrap">
+              <div class="budget-progress-label">
+                <span>สัดส่วนรายจ่าย</span>
+                <span id="budgetExpenseRatio">0%</span>
+              </div>
+              <div class="budget-progress-bar">
+                <div class="budget-progress-fill" id="budgetProgressFill" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Income List -->
+          <div class="cute-card" style="margin-top: 20px;">
+            <h3 class="card-title" style="color: var(--income-color); font-size: 1rem;">
+              <i class="fa-solid fa-wallet"></i> รายการรายรับ
+              <span class="budget-item-count" id="budgetIncomeCount">0 รายการ</span>
+            </h3>
+            <div id="budgetIncomeList" class="budget-item-list">
+              <p class="budget-empty-hint"><i class="fa-solid fa-inbox"></i> ยังไม่มีรายรับที่วางแผนไว้</p>
+            </div>
+          </div>
+
+          <!-- Expense List -->
+          <div class="cute-card" style="margin-top: 20px;">
+            <h3 class="card-title" style="color: var(--expense-color); font-size: 1rem;">
+              <i class="fa-solid fa-shopping-bag"></i> รายการรายจ่าย
+              <span class="budget-item-count" id="budgetExpenseCount">0 รายการ</span>
+            </h3>
+            <div id="budgetExpenseList" class="budget-item-list">
+              <p class="budget-empty-hint"><i class="fa-solid fa-inbox"></i> ยังไม่มีรายจ่ายที่วางแผนไว้</p>
+            </div>
+          </div>
+        </div>
+    </div>
+
   </div>
 
   <!-- Modal สำหรับเปลี่ยนรหัสผ่าน -->
@@ -476,6 +594,107 @@
     </div>
   </div>
 
+  <!-- Modal สำหรับแก้ไขรายการวางแผนงบประมาณ -->
+  <div id="editBudgetModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeEditBudgetModal()">&times;</span>
+      <h2 class="modal-title"><i class="fa-solid fa-pen-to-square" style="color: var(--income-color);"></i> <span>แก้ไขรายการวางแผน 📝</span></h2>
+      <form id="editBudgetForm" onsubmit="saveEditedBudgetItem(event)">
+        <input type="hidden" id="editBudgetType">
+        <input type="hidden" id="editBudgetIndex">
+        <div class="form-group" style="text-align: left;">
+          <label for="editBudgetLabel"><i class="fa-solid fa-tag"></i> <span>ชื่อรายการ</span></label>
+          <input type="text" id="editBudgetLabel" class="form-control" placeholder="เช่น เงินเดือน, โบนัส, ค่าเช่า..." required>
+        </div>
+        <div class="form-group" style="text-align: left; margin-top: 15px;">
+          <label for="editBudgetAmount"><i class="fa-solid fa-money-bill-wave"></i> <span>จำนวนเงิน (บาท)</span></label>
+          <input type="number" id="editBudgetAmount" class="form-control" placeholder="0.00" step="0.01" min="0.01" required>
+        </div>
+        <button type="submit" class="btn-cute" style="margin-top: 20px; background-color: var(--income-color); box-shadow: 0 4px 0 #4FA5A4;">บันทึกการแก้ไข ✨</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal สำหรับยืนยันการลบธุรกรรม -->
+  <div id="confirmDeleteModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px 24px;">
+      <div style="font-size: 3.5rem; color: var(--expense-color); margin-bottom: 15px; animation: float-icon 2s ease-in-out infinite;">
+        <i class="fa-solid fa-circle-exclamation"></i>
+      </div>
+      <h2 class="modal-title" style="margin-bottom: 10px;"><span>ยืนยันการลบรายการ?</span></h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px;">รายการเงินนี้จะถูกลบออกจากระบบอย่างถาวรและไม่สามารถกู้คืนได้</p>
+      
+      <input type="hidden" id="deleteTransactionId">
+      
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn-cute" onclick="closeConfirmDeleteModal()" style="background-color: var(--border-color); box-shadow: 0 4px 0 var(--text-muted); color: var(--text-color); margin: 0; flex: 1;">
+          ยกเลิก
+        </button>
+        <button type="button" class="btn-cute" onclick="executeDeleteTransaction()" style="background-color: var(--expense-color); box-shadow: 0 4px 0 #e57982; color: #fff; margin: 0; flex: 1;">
+          ยืนยันลบ 🗑️
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- Modal สำหรับยืนยันการออกจากระบบ (Logout) -->
+  <div id="confirmLogoutModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px 24px;">
+      <div style="font-size: 3.5rem; color: var(--ev-color); margin-bottom: 15px; animation: float-icon 2s ease-in-out infinite;">
+        <i class="fa-solid fa-house-laptop"></i>
+      </div>
+      <h2 class="modal-title" style="margin-bottom: 10px;"><span data-i18n="logout_modal_title">ออกจากระบบ?</span></h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px;" data-i18n="logout_modal_desc">คุณต้องการออกจากระบบบันทึกการเงินครอบครัวใช่หรือไม่?</p>
+      
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn-cute" onclick="closeConfirmLogoutModal()" style="background-color: var(--border-color); box-shadow: 0 4px 0 var(--text-muted); color: var(--text-color); margin: 0; flex: 1;" data-i18n="btn_cancel">
+          ยกเลิก
+        </button>
+        <button type="button" class="btn-cute" onclick="executeLogout()" style="background-color: var(--ev-color); box-shadow: 0 4px 0 #678b99; color: #fff; margin: 0; flex: 1;" data-i18n="btn_confirm_logout">
+          ยืนยัน 🚪
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal สำหรับยืนยันส่งรายงานเข้า LINE -->
+  <div id="confirmSendLineModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px 24px;">
+      <div style="font-size: 3.5rem; color: #06C755; margin-bottom: 15px; animation: float-icon 2s ease-in-out infinite;">
+        <i class="fa-brands fa-line"></i>
+      </div>
+      <h2 class="modal-title" style="margin-bottom: 10px;"><span>ส่งข้อมูลไป LINE? 📤</span></h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px;">ส่งสรุปรายรับ-รายจ่ายของวันนี้ไปยังกลุ่ม LINE ของครอบครัวทันที</p>
+      
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn-cute" onclick="closeConfirmSendLineModal()" style="background-color: var(--border-color); box-shadow: 0 4px 0 var(--text-muted); color: var(--text-color); margin: 0; flex: 1;">
+          ยกเลิก
+        </button>
+        <button type="button" class="btn-cute" onclick="executeSendLine()" style="background-color: #06C755; box-shadow: 0 4px 0 #049f43; color: #fff; margin: 0; flex: 1;">
+          ส่งเลย! 🚀
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal สำหรับยืนยันการล้างค่าหน้าวางแผน -->
+  <div id="confirmClearBudgetModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 400px; text-align: center; padding: 30px 24px;">
+      <div style="font-size: 3.5rem; color: var(--expense-color); margin-bottom: 15px; animation: float-icon 2s ease-in-out infinite;">
+        <i class="fa-solid fa-trash-can-arrow-up"></i>
+      </div>
+      <h2 class="modal-title" style="margin-bottom: 10px;"><span>ล้างแผนเดือนหน้าทั้งหมด? 🧹</span></h2>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 25px;">รายการวางแผนรายรับ-รายจ่ายทั้งหมดของเดือนหน้าจะถูกลบทิ้งทั้งหมด</p>
+      
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" class="btn-cute" onclick="closeConfirmClearBudgetModal()" style="background-color: var(--border-color); box-shadow: 0 4px 0 var(--text-muted); color: var(--text-color); margin: 0; flex: 1;">
+          ยกเลิก
+        </button>
+        <button type="button" class="btn-cute" onclick="executeClearBudgetPlan()" style="background-color: var(--expense-color); box-shadow: 0 4px 0 #e57982; color: #fff; margin: 0; flex: 1;">
+          ล้างข้อมูล 🗑️
+        </button>
+      </div>
+    </div>
+  </div>
   <!-- Footer -->
   <footer>
     <p data-i18n="footer">พัฒนาด้วยความรัก 💖 สำหรับสมาชิกในครอบครัวและรถ EV ของเรา | ปี 2026</p>
@@ -490,7 +709,7 @@
 
   <!-- JS Logic -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-  <script src="js/translations.js"></script>
-  <script src="js/app.js?v=1.0.3"></script>
+  <script src="js/translations.js?v=1.0.1"></script>
+  <script src="js/app.js?v=1.0.9"></script>
 </body>
 </html>

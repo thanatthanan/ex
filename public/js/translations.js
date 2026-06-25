@@ -129,6 +129,10 @@ const translations = {
     alert_conn_error: "เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์",
     alert_conn_failed: "เกิดข้อผิดพลาดในการเชื่อมต่อ",
     alert_no_credit_selected: "กรุณาเลือกรายการค้างชำระบัตรเครดิตด้วยครับ",
+    logout_modal_title: "ออกจากบ้านกันหรอ? 🚪",
+    logout_modal_desc: "คุณแม่และเด็กๆ จะคิดถึงคุณนะ! แน่ใจใช่ไหมว่าจะออกจากระบบบันทึกการเงินครอบครัว? 🏠",
+    btn_cancel: "อยู่ต่อก่อน 🏡",
+    btn_confirm_logout: "ออกเดินทาง",
     // Meal Types
     meal_breakfast: "เช้า",
     meal_lunch: "กลางวัน",
@@ -298,6 +302,10 @@ const translations = {
     alert_conn_error: "Connection to server failed.",
     alert_conn_failed: "Connection error.",
     alert_no_credit_selected: "Please select credit transactions to pay.",
+    logout_modal_title: "Leaving so soon? 🚪",
+    logout_modal_desc: "We will miss you! Are you sure you want to log out of the family app? 🏠",
+    btn_cancel: "Stay Here 🏡",
+    btn_confirm_logout: "Goodbye",
     // Meal Types
     meal_breakfast: "Morning",
     meal_lunch: "Lunch",

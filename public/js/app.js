@@ -972,10 +972,28 @@ async function saveTransaction(event) {
   }
 }
 
-// ลบธุรกรรมการเงิน
-async function deleteTransaction(id) {
+// ลบธุรกรรมการเงิน (เปิด Modal ยืนยัน)
+function deleteTransaction(id) {
+  const modal = document.getElementById('confirmDeleteModal');
+  const idInput = document.getElementById('deleteTransactionId');
+  if (modal && idInput) {
+    idInput.value = id;
+    modal.style.display = 'flex';
+  }
+}
+
+// ปิด Modal ยืนยันการลบ
+function closeConfirmDeleteModal() {
+  const modal = document.getElementById('confirmDeleteModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ทำการลบจริงเมื่อกดยืนยันใน Modal
+async function executeDeleteTransaction() {
+  const idInput = document.getElementById('deleteTransactionId');
+  if (!idInput) return;
+  const id = idInput.value;
   const lang = localStorage.getItem('lang') || 'th';
-  if (!confirm(translations[lang].alert_delete_confirm)) return;
 
   try {
     const res = await fetch(`${basePath}/api/transactions/${id}`, {
@@ -991,6 +1009,8 @@ async function deleteTransaction(id) {
   } catch (error) {
     console.error(error);
     alert(translations[lang].alert_conn_failed);
+  } finally {
+    closeConfirmDeleteModal();
   }
 }
 
@@ -1025,6 +1045,10 @@ async function switchTab(tabId) {
   // ถ้าเปลี่ยนเป็นแท็บบัตรเครดิต
   else if (tabId === 'credit-tab') {
     await fetchUnpaidCredits();
+  }
+  // ถ้าเปลี่ยนเป็นแท็บวางแผนงบประมาณเดือนหน้า
+  else if (tabId === 'budget-tab') {
+    initBudgetPlanner();
   }
 }
 
@@ -1716,11 +1740,37 @@ async function payCreditTransactions() {
   }
 }
 
-// จัดการการ Logout
-async function handleLogout() {
+// จัดการการ Logout (เปิด Modal)
+function handleLogout() {
   const lang = localStorage.getItem('lang') || 'th';
-  if (!confirm(translations[lang].alert_logout_confirm)) return;
+  const modal = document.getElementById('confirmLogoutModal');
+  
+  // แปลภาษาให้กับเนื้อหาใน Modal
+  const titleSpan = modal?.querySelector('.modal-title span');
+  const descP = modal?.querySelector('p');
+  const cancelBtn = modal?.querySelector('button[onclick="closeConfirmLogoutModal()"]');
+  const confirmBtn = modal?.querySelector('button[onclick="executeLogout()"]');
 
+  if (titleSpan) titleSpan.textContent = translations[lang].logout_modal_title || 'ออกจากระบบ?';
+  if (descP) descP.textContent = translations[lang].logout_modal_desc || 'คุณต้องการออกจากระบบบันทึกการเงินครอบครัวใช่หรือไม่?';
+  if (cancelBtn) cancelBtn.textContent = translations[lang].btn_cancel || 'ยกเลิก';
+  if (confirmBtn) {
+    // เก็บส่วน HTML ไอคอน 🚪 ไว้
+    confirmBtn.innerHTML = (translations[lang].btn_confirm_logout || 'ยืนยัน') + ' 🚪';
+  }
+
+  if (modal) modal.style.display = 'flex';
+}
+
+// ปิด Modal ยืนยัน Logout
+function closeConfirmLogoutModal() {
+  const modal = document.getElementById('confirmLogoutModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ทำการ Logout จริงเมื่อกดยืนยันใน Modal
+async function executeLogout() {
+  const lang = localStorage.getItem('lang') || 'th';
   try {
     const res = await fetch(basePath + '/api/auth/logout', { method: 'POST' });
     const data = await res.json();
@@ -1730,6 +1780,8 @@ async function handleLogout() {
   } catch (error) {
     console.error('Logout error:', error);
     alert(translations[lang].alert_logout_failed);
+  } finally {
+    closeConfirmLogoutModal();
   }
 }
 
@@ -2154,8 +2206,8 @@ function parseSlipText(text) {
   alert(alertMsg);
 }
 
-// ฟังก์ชันส่งรายงานสรุปรายจ่ายประจำวันเข้า LINE แบบแมนนวล
-async function triggerManualDailySummary() {
+// ฟังก์ชันส่งรายงานสรุปรายจ่ายประจำวันเข้า LINE แบบแมนนวล (เปิด Modal ยืนยัน)
+function triggerManualDailySummary() {
   const lang = localStorage.getItem('lang') || 'th';
   
   // ซ่อนเมนูโปรไฟล์หลังจากคลิก
@@ -2164,12 +2216,34 @@ async function triggerManualDailySummary() {
   if (menu) menu.classList.remove('show');
   if (trigger) trigger.classList.remove('active');
 
-  const confirmMsg = lang === 'th'
-    ? 'คุณต้องการส่งรายงานสรุปรายรับ-รายจ่ายของวันนี้ไปยัง LINE ทันทีใช่หรือไม่?'
-    : 'Do you want to send today\'s financial summary to LINE immediately?';
-    
-  if (!confirm(confirmMsg)) return;
+  const modal = document.getElementById('confirmSendLineModal');
+  if (modal) {
+    // ปรับแต่งข้อความตามภาษาที่ใช้
+    const titleSpan = modal.querySelector('.modal-title span');
+    const descP = modal.querySelector('p');
+    const cancelBtn = modal.querySelector('button[onclick="closeConfirmSendLineModal()"]');
+    const confirmBtn = modal.querySelector('button[onclick="executeSendLine()"]');
 
+    if (titleSpan) titleSpan.textContent = lang === 'th' ? 'ส่งข้อมูลไป LINE? 📤' : 'Send summary to LINE? 📤';
+    if (descP) descP.textContent = lang === 'th'
+      ? 'ส่งสรุปรายรับ-รายจ่ายของวันนี้ไปยังกลุ่ม LINE ของครอบครัวทันที'
+      : 'Send today\'s income and expense summary to the family LINE group immediately.';
+    if (cancelBtn) cancelBtn.textContent = lang === 'th' ? 'ยกเลิก' : 'Cancel';
+    if (confirmBtn) confirmBtn.innerHTML = lang === 'th' ? 'ส่งเลย! 🚀' : 'Send! 🚀';
+
+    modal.style.display = 'flex';
+  }
+}
+
+// ปิด Modal ยืนยันส่ง LINE
+function closeConfirmSendLineModal() {
+  const modal = document.getElementById('confirmSendLineModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ส่งรายงานสรุปไป LINE จริงเมื่อกดยืนยันใน Modal
+async function executeSendLine() {
+  const lang = localStorage.getItem('lang') || 'th';
   try {
     const res = await fetch(`${basePath}/api/line-bot/send-summary`, {
       method: 'POST',
@@ -2185,7 +2259,292 @@ async function triggerManualDailySummary() {
   } catch (error) {
     console.error('Error sending manual daily summary to LINE:', error);
     alert(lang === 'th' ? 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ในขณะนี้' : 'Cannot connect to the server at this time.');
+  } finally {
+    closeConfirmSendLineModal();
   }
 }
 
+
+// =============================================
+// BUDGET PLANNER - วางแผนรายรับ/รายจ่ายเดือนหน้า
+// =============================================
+
+// Storage key สำหรับ localStorage
+function getBudgetStorageKey() {
+  const next = getNextMonthInfo();
+  return `budgetPlan_${next.year}_${next.month}`;
+}
+
+// คำนวณเดือนถัดไป
+function getNextMonthInfo() {
+  const now = new Date();
+  let month = now.getMonth() + 2; // +1 เพราะ getMonth() เริ่มที่ 0, +1 อีกสำหรับเดือนถัดไป
+  let year = now.getFullYear();
+  if (month > 12) {
+    month = 1;
+    year += 1;
+  }
+  return { month, year };
+}
+
+// โหลดข้อมูลจาก localStorage
+function loadBudgetPlan() {
+  const key = getBudgetStorageKey();
+  const raw = localStorage.getItem(key);
+  if (!raw) return { income: [], expense: [] };
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return { income: [], expense: [] };
+  }
+}
+
+// บันทึกข้อมูลลง localStorage
+function saveBudgetPlan(plan) {
+  const key = getBudgetStorageKey();
+  localStorage.setItem(key, JSON.stringify(plan));
+}
+
+// เริ่มต้นหน้าวางแผนงบประมาณ
+function initBudgetPlanner() {
+  // อัปเดต label เดือน
+  const { month, year } = getNextMonthInfo();
+  const lang = localStorage.getItem('lang') || 'th';
+  const monthNamesArr = monthNames[lang] || monthNames['th'];
+  const monthName = monthNamesArr[month - 1];
+  const yearDisplay = lang === 'th' ? year + 543 : year;
+  const label = document.getElementById('budgetMonthLabel');
+  if (label) {
+    label.textContent = `📅 วางแผนสำหรับเดือน ${monthName} ${yearDisplay}`;
+  }
+
+  renderBudgetPlanner();
+}
+
+// แสดงผลทั้งหมด
+function renderBudgetPlanner() {
+  const plan = loadBudgetPlan();
+
+  // Render income list
+  renderBudgetList('income', plan.income);
+  // Render expense list
+  renderBudgetList('expense', plan.expense);
+
+  // Update summary
+  updateBudgetSummary(plan);
+}
+
+// สร้าง HTML รายการ
+function renderBudgetList(type, items) {
+  const listEl = document.getElementById(type === 'income' ? 'budgetIncomeList' : 'budgetExpenseList');
+  const countEl = document.getElementById(type === 'income' ? 'budgetIncomeCount' : 'budgetExpenseCount');
+  if (!listEl) return;
+
+  if (countEl) countEl.textContent = `${items.length} รายการ`;
+
+  if (items.length === 0) {
+    listEl.innerHTML = type === 'income'
+      ? '<p class="budget-empty-hint"><i class="fa-solid fa-inbox"></i> ยังไม่มีรายรับที่วางแผนไว้</p>'
+      : '<p class="budget-empty-hint"><i class="fa-solid fa-inbox"></i> ยังไม่มีรายจ่ายที่วางแผนไว้</p>';
+    return;
+  }
+
+  listEl.innerHTML = items.map((item, index) => `
+    <div class="budget-item-row">
+      <div class="budget-item-icon ${type}-icon">
+        <i class="fa-solid ${type === 'income' ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+      </div>
+      <div class="budget-item-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
+      <div class="budget-item-amount ${type}-amt">${formatCurrencyCompact(item.amount)}</div>
+      <button class="budget-item-delete" onclick="editBudgetItem('${type}', ${index})" title="แก้ไขรายการนี้" style="margin-left: 6px; color: var(--income-color);">
+        <i class="fa-solid fa-pen"></i>
+      </button>
+      <button class="budget-item-delete" onclick="deleteBudgetItem('${type}', ${index})" title="ลบรายการนี้">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+// อัปเดตสรุปยอด
+function updateBudgetSummary(plan) {
+  const totalIncome = plan.income.reduce((s, i) => s + i.amount, 0);
+  const totalExpense = plan.expense.reduce((s, i) => s + i.amount, 0);
+  const net = totalIncome - totalExpense;
+
+  const incomeEl = document.getElementById('budgetTotalIncome');
+  const expenseEl = document.getElementById('budgetTotalExpense');
+  const netEl = document.getElementById('budgetNetAmount');
+  const ratioEl = document.getElementById('budgetExpenseRatio');
+  const fillEl = document.getElementById('budgetProgressFill');
+
+  if (incomeEl) incomeEl.textContent = formatCurrencyCompact(totalIncome);
+  if (expenseEl) expenseEl.textContent = formatCurrencyCompact(totalExpense);
+  if (netEl) {
+    netEl.textContent = formatCurrencyCompact(Math.abs(net)) + (net < 0 ? ' (ติดลบ)' : ' ฿');
+    if (net >= 0) {
+      netEl.textContent = formatCurrencyCompact(net) + ' ฿';
+      netEl.classList.remove('negative');
+    } else {
+      netEl.textContent = '-' + formatCurrencyCompact(Math.abs(net)) + ' ฿';
+      netEl.classList.add('negative');
+    }
+  }
+
+  const ratio = totalIncome > 0 ? Math.min((totalExpense / totalIncome) * 100, 100) : (totalExpense > 0 ? 100 : 0);
+  const ratioRounded = Math.round(ratio);
+
+  if (ratioEl) ratioEl.textContent = ratioRounded + '%';
+  if (fillEl) {
+    fillEl.style.width = ratioRounded + '%';
+    if (ratio >= 85) {
+      fillEl.classList.add('danger');
+    } else {
+      fillEl.classList.remove('danger');
+    }
+  }
+}
+
+// เพิ่มรายการ
+function addBudgetItem(type) {
+  const labelInput = document.getElementById(type === 'income' ? 'budgetIncomeLabel' : 'budgetExpenseLabel');
+  const amountInput = document.getElementById(type === 'income' ? 'budgetIncomeAmount' : 'budgetExpenseAmount');
+
+  const label = labelInput ? labelInput.value.trim() : '';
+  const amount = parseFloat(amountInput ? amountInput.value : 0);
+
+  if (!label) {
+    labelInput.focus();
+    labelInput.style.borderColor = 'var(--expense-color)';
+    setTimeout(() => { labelInput.style.borderColor = ''; }, 1500);
+    return;
+  }
+  if (!amount || amount <= 0) {
+    amountInput.focus();
+    amountInput.style.borderColor = 'var(--expense-color)';
+    setTimeout(() => { amountInput.style.borderColor = ''; }, 1500);
+    return;
+  }
+
+  const plan = loadBudgetPlan();
+  plan[type].push({ label, amount, addedAt: new Date().toISOString() });
+  saveBudgetPlan(plan);
+
+  // ล้างฟอร์ม
+  if (labelInput) labelInput.value = '';
+  if (amountInput) amountInput.value = '';
+
+  renderBudgetPlanner();
+}
+
+// แก้ไขรายการ (เปิด Modal)
+function editBudgetItem(type, index) {
+  const plan = loadBudgetPlan();
+  const item = plan[type][index];
+  if (!item) return;
+
+  const modal = document.getElementById('editBudgetModal');
+  const typeInput = document.getElementById('editBudgetType');
+  const indexInput = document.getElementById('editBudgetIndex');
+  const labelInput = document.getElementById('editBudgetLabel');
+  const amountInput = document.getElementById('editBudgetAmount');
+
+  if (modal && typeInput && indexInput && labelInput && amountInput) {
+    typeInput.value = type;
+    indexInput.value = index;
+    labelInput.value = item.label;
+    amountInput.value = item.amount;
+    modal.style.display = 'flex';
+  }
+}
+
+// ปิด Modal แก้ไขรายการ
+function closeEditBudgetModal() {
+  const modal = document.getElementById('editBudgetModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// บันทึกการแก้ไขจาก Modal
+function saveEditedBudgetItem(event) {
+  event.preventDefault();
+
+  const type = document.getElementById('editBudgetType').value;
+  const index = parseInt(document.getElementById('editBudgetIndex').value);
+  const label = document.getElementById('editBudgetLabel').value.trim();
+  const amount = parseFloat(document.getElementById('editBudgetAmount').value);
+
+  if (!label) return;
+  if (isNaN(amount) || amount <= 0) return;
+
+  const plan = loadBudgetPlan();
+  if (plan[type] && plan[type][index]) {
+    plan[type][index].label = label;
+    plan[type][index].amount = amount;
+    saveBudgetPlan(plan);
+    renderBudgetPlanner();
+  }
+
+  closeEditBudgetModal();
+}
+
+// ลบรายการ
+function deleteBudgetItem(type, index) {
+  const plan = loadBudgetPlan();
+  plan[type].splice(index, 1);
+  saveBudgetPlan(plan);
+  renderBudgetPlanner();
+}
+
+// ล้างทั้งหมด (เปิด Modal ยืนยัน)
+function clearBudgetPlan() {
+  const lang = localStorage.getItem('lang') || 'th';
+  const modal = document.getElementById('confirmClearBudgetModal');
+  if (modal) {
+    // ปรับแต่งข้อความตามภาษาที่ใช้
+    const titleSpan = modal.querySelector('.modal-title span');
+    const descP = modal.querySelector('p');
+    const cancelBtn = modal.querySelector('button[onclick="closeConfirmClearBudgetModal()"]');
+    const confirmBtn = modal.querySelector('button[onclick="executeClearBudgetPlan()"]');
+
+    if (titleSpan) titleSpan.textContent = lang === 'th' ? 'ล้างแผนเดือนหน้าทั้งหมด? 🧹' : 'Clear all budget plans? 🧹';
+    if (descP) descP.textContent = lang === 'th'
+      ? 'รายการวางแผนรายรับ-รายจ่ายทั้งหมดของเดือนหน้าจะถูกลบทิ้งทั้งหมด'
+      : 'All planned incomes and expenses for next month will be completely deleted.';
+    if (cancelBtn) cancelBtn.textContent = lang === 'th' ? 'ยกเลิก' : 'Cancel';
+    if (confirmBtn) confirmBtn.innerHTML = lang === 'th' ? 'ล้างข้อมูล 🗑_' : 'Clear 🗑_';
+    
+    // แทนที่สัญลักษณ์ 🗑_ ด้วย 🗑️
+    if (confirmBtn) confirmBtn.innerHTML = confirmBtn.innerHTML.replace('🗑_', '🗑️');
+
+    modal.style.display = 'flex';
+  }
+}
+
+// ปิด Modal ยืนยันล้างงบ
+function closeConfirmClearBudgetModal() {
+  const modal = document.getElementById('confirmClearBudgetModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ทำการล้างงบเดือนหน้าจริงเมื่อกดยืนยันใน Modal
+function executeClearBudgetPlan() {
+  const key = getBudgetStorageKey();
+  localStorage.removeItem(key);
+  renderBudgetPlanner();
+  closeConfirmClearBudgetModal();
+}
+
+// Helper: format สกุลเงิน (compact)
+function formatCurrencyCompact(amount) {
+  return Number(amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Helper: escape HTML
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
