@@ -1647,11 +1647,11 @@ footer {
 
 /* Big result card */
 .budget-result-card {
-  background: linear-gradient(135deg, var(--income-color) 0%, var(--primary-color) 100%);
+  background: linear-gradient(135deg, #FF9B97 0%, #B5EAD7 100%);
   border-radius: 28px;
   padding: 28px 24px 20px;
-  box-shadow: 0 12px 40px var(--shadow-color);
-  color: var(--text-color);
+  box-shadow: 0 12px 30px rgba(255, 155, 151, 0.2);
+  color: #FFFFFF;
   position: relative;
   overflow: hidden;
 }
@@ -1731,15 +1731,15 @@ footer {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(8px);
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 50px;
   padding: 6px 14px;
   font-size: 0.85rem;
   flex: 1;
   min-width: 120px;
-  color: var(--text-color);
+  color: #FFFFFF;
 }
 
 .budget-stat-pill strong {
@@ -1757,9 +1757,9 @@ footer {
   display: flex;
   justify-content: space-between;
   font-size: 0.78rem;
-  opacity: 0.85;
+  opacity: 0.95;
   margin-bottom: 6px;
-  color: var(--text-color);
+  color: #FFFFFF;
 }
 
 .budget-progress-bar {
