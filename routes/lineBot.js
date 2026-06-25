@@ -546,6 +546,120 @@ function cleanText(txt) {
   return txt.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').replace(/[^\w\u0E00-\u0E7F]/g, '').trim().toLowerCase();
 }
 
+// รายชื่อบัตรเครดิต/เดบิตที่รองรับ (ชื่อแบบย่อ และแบบเต็ม)
+// เพิ่มชื่อบัตรที่นี่เพื่อขยายการรองรับในอนาคต
+const KNOWN_CREDIT_CARDS = [
+  // Truemoney / Truepay
+  { pattern: /truepay\s+next/i, name: 'Truepay Next' },
+  { pattern: /truepay/i, name: 'Truepay' },
+  { pattern: /truemoney/i, name: 'TrueMoney' },
+  // KBank
+  { pattern: /kbank/i, name: 'KBank' },
+  { pattern: /กสิกร/i, name: 'KBank' },
+  // SCB
+  { pattern: /\bscb\b/i, name: 'SCB' },
+  { pattern: /ไทยพาณิชย์/i, name: 'SCB' },
+  // Bangkok Bank / BBL
+  { pattern: /\bbbl\b/i, name: 'BBL' },
+  { pattern: /กรุงเทพ/i, name: 'BBL' },
+  // Krungsri / Bay
+  { pattern: /\bbay\b/i, name: 'Krungsri' },
+  { pattern: /กรุงศรี/i, name: 'Krungsri' },
+  // Krungthai / KTB
+  { pattern: /\bktb\b/i, name: 'KTB' },
+  { pattern: /กรุงไทย/i, name: 'KTB' },
+  // TTB
+  { pattern: /\bttb\b/i, name: 'TTB' },
+  // UOB
+  { pattern: /\buob\b/i, name: 'UOB' },
+  // CITI
+  { pattern: /\bciti\b/i, name: 'Citi' },
+  // AMEX
+  { pattern: /\bamex\b/i, name: 'AMEX' },
+  { pattern: /american\s*express/i, name: 'AMEX' },
+];
+
+// ฟังก์ชันตรวจจับวิธีชำระเงินและชื่อบัตรเครดิตจากข้อความ
+// รูปแบบที่รองรับ:
+//   "จ่ายค่าน้ำ 500 Truepay Next"     → credit, Truepay Next
+//   "อาหาร 80 credit KBank"           → credit, KBank
+//   "ค่าน้ำมัน 1500 บัตร กสิกร"      → credit, KBank
+//   "เงินเดือน 25000 โอน"             → transfer
+//   "อาหาร 80"                        → cash (ค่าเริ่มต้น)
+function detectPaymentMethod(text) {
+  // 1. ตรวจสอบว่าเป็นเงินสด (cash) หรือโอนเงิน (transfer) โดยชัดเจน
+  if (/\b(?:เงินสด|cash|สด)\b/i.test(text)) {
+    return { paymentMethod: 'cash', creditCardName: null };
+  }
+  if (/\b(?:โอน|transfer|พร้อมเพย์|promptpay|qr)\b/i.test(text)) {
+    return { paymentMethod: 'transfer', creditCardName: null };
+  }
+
+  // 2. ตรวจสอบบัตรเครดิตจากรายชื่อที่รู้จัก (ตรวจก่อน keyword "credit" เพื่อรองรับชื่อบัตรเปล่าๆ)
+  for (const card of KNOWN_CREDIT_CARDS) {
+    if (card.pattern.test(text)) {
+      return { paymentMethod: 'credit', creditCardName: card.name };
+    }
+  }
+
+  // 3. ตรวจสอบ keyword บัตรเครดิต/เดบิตทั่วไป แล้วดึงชื่อบัตรหลัง keyword
+  const creditKeywordMatch = text.match(/\b(?:credit|เครดิต|บัตรเครดิต|บัตร|debit|เดบิต)\s+([\w\u0E00-\u0E7F]+(?:\s+[\w\u0E00-\u0E7F]+)?)/i);
+  if (creditKeywordMatch) {
+    const rawCardName = creditKeywordMatch[1].trim();
+    // ตรวจสอบอีกครั้งว่าชื่อที่ดึงได้ตรงกับบัตรที่รู้จักหรือไม่
+    for (const card of KNOWN_CREDIT_CARDS) {
+      if (card.pattern.test(rawCardName)) {
+        return { paymentMethod: 'credit', creditCardName: card.name };
+      }
+    }
+    // ใช้ชื่อบัตรที่พิมพ์มาโดยตรง (จำกัด 50 ตัวอักษร)
+    return { paymentMethod: 'credit', creditCardName: rawCardName.substring(0, 50) };
+  }
+
+  // 4. ตรวจสอบ keyword บัตรเดี่ยวๆ โดยไม่มีชื่อตาม
+  if (/\b(?:credit|เครดิต|บัตรเครดิต|บัตร|debit|เดบิต)\b/i.test(text)) {
+    return { paymentMethod: 'credit', creditCardName: null };
+  }
+
+  // 5. ค่าเริ่มต้น: ชำระด้วยเงินสด
+  return { paymentMethod: 'cash', creditCardName: null };
+}
+
+// ฟังก์ชันตรวจจับมื้ออาหารจากข้อความ
+// รูปแบบที่รองรับ:
+//   "อาหาร 80 เช้า ข้าวกะเพรา"   → meal: เช้า
+//   "อาหารเช้า 150 กาแฟ"         → meal: เช้า
+//   "มื้อกลางวัน 200"              → meal: กลางวัน
+//   "ค่าอาหารเย็น 350 KFC"        → meal: เย็น
+//   "สุกี้ 120 ดึก"                → meal: ดึก
+//   "อาหาร 80"                    → null (ไม่ระบุมื้อ)
+function detectMealType(text) {
+  const t = text.toLowerCase();
+
+  // คำหลัก: มื้อเช้า
+  if (/(?:มื้อเช้า|อาหารเช้า|\bเช้า\b|breakfast|morning)/i.test(text)) {
+    return 'เช้า';
+  }
+
+  // คำหลัก: มื้อกลางวัน
+  if (/(?:มื้อกลางวัน|อาหารกลางวัน|ค่าอาหารกลางวัน|กลางวัน|lunch|afternoon)/i.test(text)) {
+    return 'กลางวัน';
+  }
+
+  // คำหลัก: มื้อเย็น
+  if (/(?:มื้อเย็น|อาหารเย็น|ค่าอาหารเย็น|\bเย็น\b|dinner|evening)/i.test(text)) {
+    return 'เย็น';
+  }
+
+  // คำหลัก: มื้อดึก
+  if (/(?:มื้อดึก|อาหารดึก|\bดึก\b|supper|midnight)/i.test(text)) {
+    return 'ดึก';
+  }
+
+  // ไม่ระบุมื้อ
+  return null;
+}
+
 // ฟังก์ชันวิเคราะห์ข้อความแชทเพื่อบันทึกรายการเงิน
 async function parseMessage(text) {
   const parts = text.trim().split(/\s+/);
@@ -566,6 +680,9 @@ async function parseMessage(text) {
     return null; // ไม่ใช่ข้อความสำหรับระบุยอดเงิน
   }
   
+  // วิเคราะห์วิธีชำระเงินและบัตรเครดิตจากข้อความเต็ม (ก่อนตัด parts)
+  const { paymentMethod, creditCardName } = detectPaymentMethod(text);
+
   // นำจำนวนเงินออกจากอาร์เรย์เพื่อไม่ให้กวนการหาคำอื่น
   parts.splice(amountIndex, 1);
   
@@ -596,18 +713,51 @@ async function parseMessage(text) {
   if (matchedCategory) {
     parts.splice(categoryIndex, 1);
   } else {
-    // หากไม่พบหมวดหมู่เลย ให้กำหนดค่าเริ่มต้นเป็น "รายจ่ายอื่นๆ" (หรือหมวดหมู่ประเภทรายจ่ายตัวแรก)
-    matchedCategory = categories.find(cat => cat.name.includes('อื่นๆ') && cat.type === 'expense') || 
-                      categories.find(cat => cat.type === 'expense') || 
-                      categories[0];
+    // ถ้าข้อความมีคำที่บ่งบอกถึงอาหาร ให้ fallback หมวด "ค่าอาหารและเครื่องดื่ม" ก่อน
+    const foodKeywordMatch = /(?:ข้าว|กับข้าว|อาหาร|เครื่องดื่ม|กาแฟ|ชา|น้ำ|ก๋วยเตี๋ยว|โจ๊ก|สุกี้|ปิ้งย่าง|บุฟเฟ่|ร้านอาหาร|เบเกอรี่|ขนม|ผลไม้)/i.test(text);
+    if (foodKeywordMatch) {
+      matchedCategory = categories.find(cat => /(?:อาหาร|เครื่องดื่ม)/i.test(cat.name) && cat.type === 'expense') ||
+                        categories.find(cat => cat.name.includes('อื่นๆ') && cat.type === 'expense') ||
+                        categories.find(cat => cat.type === 'expense') ||
+                        categories[0];
+    } else {
+      // หากไม่พบหมวดหมู่เลย ให้กำหนดค่าเริ่มต้นเป็น "รายจ่ายอื่นๆ"
+      matchedCategory = categories.find(cat => cat.name.includes('อื่นๆ') && cat.type === 'expense') || 
+                        categories.find(cat => cat.type === 'expense') || 
+                        categories[0];
+    }
   }
   
-  const description = parts.join(' ').trim() || null;
-  
+  // ตรวจจับมื้ออาหารจากข้อความเต็มเสมอ (ไม่ผูกกับหมวดหมู่)
+  const mealType = detectMealType(text);
+
+  // รวม parts ที่เหลือเป็น description เบื้องต้น
+  let description = parts.join(' ').trim() || null;
+
+  // --- ทำความสะอาด description: ลบคำที่เกี่ยวกับวิธีชำระเงิน และมื้ออาหารออก ---
+  if (description) {
+    // ลบชื่อบัตรเครดิตที่รู้จัก (ทำก่อน เพราะบางชื่อเป็น multi-word เช่น "Truepay Next")
+    for (const card of KNOWN_CREDIT_CARDS) {
+      description = description.replace(new RegExp(card.pattern.source, 'gi'), '');
+    }
+
+    // ลบ keyword วิธีชำระเงินทั่วไป
+    description = description.replace(/\b(?:credit|เครดิต|บัตรเครดิต|บัตร|debit|เดบิต|เงินสด|cash|สด|โอน|transfer|พร้อมเพย์|promptpay|qr)\b/gi, '');
+
+    // ลบ keyword มื้ออาหาร
+    description = description.replace(/(?:มื้อเช้า|อาหารเช้า|\bเช้า\b|breakfast|morning|มื้อกลางวัน|อาหารกลางวัน|ค่าอาหารกลางวัน|\bกลางวัน\b|lunch|afternoon|มื้อเย็น|อาหารเย็น|ค่าอาหารเย็น|\bเย็น\b|dinner|evening|มื้อดึก|อาหารดึก|\bดึก\b|supper|midnight)/gi, '');
+
+    // ทำความสะอาด space ที่เหลือ
+    description = description.replace(/\s+/g, ' ').trim() || null;
+  }
+
   return {
     amount,
     category: matchedCategory,
-    description
+    description,
+    paymentMethod,
+    creditCardName,
+    mealType
   };
 }
 
@@ -684,21 +834,36 @@ router.post('/webhook', async (req, res) => {
           if (messageText === 'วิธีใช้' || messageText === 'ช่วยเหลือ' || messageText.toLowerCase() === 'help' || messageText === 'เมนู') {
             const helpMsg = 
               `📖 คู่มือการใช้งานบอทสมุดบัญชีบ้านเรา\n\n` +
-              `💰 1. บันทึกรายรับ-รายจ่าย\n` +
+              `💰 1. บันทึกรายรับ-รายจ่าย (เงินสด)\n` +
               `พิมพ์: [หมวดหมู่หรือคำอธิบาย] [จำนวนเงิน] [รายละเอียดอื่น]\n` +
               `ตัวอย่าง:\n` +
               `• "อาหาร 80 ข้าวกะเพรา"\n` +
               `• "เดินทาง 45 รถไฟฟ้า"\n` +
               `• "รายรับอื่นๆ 15000 เงินเดือน"\n\n` +
-              `⚡ 2. บันทึกชาร์จไฟรถ EV\n` +
+              `💳 2. บันทึกรายจ่ายด้วยบัตรเครดิต\n` +
+              `ระบุชื่อบัตรต่อท้ายได้เลย ระบบจะจับโดยอัตโนมัติ\n` +
+              `ตัวอย่าง:\n` +
+              `• "จ่ายค่าน้ำ 500 Truepay Next"\n` +
+              `• "อาหาร 350 credit KBank"\n` +
+              `• "ค่าไฟ 1200 บัตร SCB"\n` +
+              `• "ช้อปปิ้ง 2500 บัตรเครดิต Krungsri"\n` +
+              `บัตรที่รองรับ: KBank, SCB, BBL, Krungsri, KTB, TTB, UOB, Citi, AMEX, Truepay, TrueMoney\n\n` +
+              `🍽️ 3. ระบุมื้ออาหาร\n` +
+              `เพิ่มคำว่า "เช้า", "กลางวัน", "เย็น" หรือ "ดึก" ต่อท้ายได้เลย\n` +
+              `ตัวอย่าง:\n` +
+              `• "อาหาร 80 เช้า ข้าวกะเพรา"\n` +
+              `• "อาหารเย็น 350 สุกี้"\n` +
+              `• "กาแฟ 65 มื้อเช้า Truepay Next"\n` +
+              `• "มื้อกลางวัน 200 credit KBank"\n\n` +
+              `⚡ 4. บันทึกชาร์จไฟรถ EV\n` +
               `พิมพ์คำว่า "ชาร์จ" ร่วมกับยอดเงิน และข้อมูลแบตเตอรี่ หรือเลขไมล์\n` +
               `ตัวอย่าง:\n` +
               `• "ชาร์จไฟ 350 ปตท แบต 20-80"\n` +
               `• "ชาร์จ 450 Elexa 120kw แบต 15-85 วิ่ง 54200"\n\n` +
-              `📊 3. เรียกดูรายงานสรุป (ฟรี)\n` +
+              `📊 5. เรียกดูรายงานสรุป (ฟรี)\n` +
               `• พิมพ์ "สรุป" เพื่อดูรายงานประจำวันนี้\n` +
               `• พิมพ์ "สรุปเดือนนี้" เพื่อดูรายงานของเดือนนี้\n\n` +
-              `🗑️ 4. ยกเลิกรายการล่าสุด\n` +
+              `🗑️ 6. ยกเลิกรายการล่าสุด\n` +
               `• พิมพ์ "ลบ" หรือ "ยกเลิก" เพื่อลบรายการเงินตัวล่าสุดที่คุณเพิ่งพิมพ์เข้าไปค่ะ`;
             
             await sendReplyMessageToLine(token, replyToken, helpMsg);
@@ -763,21 +928,52 @@ router.post('/webhook', async (req, res) => {
             continue;
           }
 
+          // คำสั่ง "ลงบัญชี" หรือ "ลงรายการ" → แสดงคู่มือค่าอาหารพร้อมมื้ออาหาร
+          if (messageText === 'ลงบัญชี' || messageText === 'ลงรายการ' || /\bลงบัญชี\b/.test(messageText)) {
+            const foodGuideMsg =
+              `🍽️ วิธีลงบัญชีค่าอาหาร\n\n` +
+              `รูปแบบ: [ชื่อร้าน/เมนู] [ยอดเงิน] [มื้อ] [บัตร]\n\n` +
+              `🌅 มื้อเช้า (พิมพ์: เช้า / มื้อเช้า / อาหารเช้า)\n` +
+              `• "โจ๊ก 50 เช้า"\n` +
+              `• "กาแฟ 65 มื้อเช้า Truepay Next"\n` +
+              `• "อาหารเช้า 120 KFC"\n\n` +
+              `☀️ มื้อกลางวัน (พิมพ์: กลางวัน / มื้อกลางวัน)\n` +
+              `• "ข้าวผัด 80 กลางวัน"\n` +
+              `• "มื้อกลางวัน 150 credit KBank"\n\n` +
+              `🌇 มื้อเย็น (พิมพ์: เย็น / มื้อเย็น / อาหารเย็น)\n` +
+              `• "สุกี้ 350 เย็น"\n` +
+              `• "อาหารเย็น 200 Maybay Truepay Next"\n\n` +
+              `🌙 มื้อดึก (พิมพ์: ดึก / มื้อดึก / อาหารดึก)\n` +
+              `• "สุกี้ 120 ดึก"\n` +
+              `• "โจ๊กหมู 90 มื้อดึก KBank"\n\n` +
+              `💡 ไม่ระบุมื้อก็ได้ ระบบจะบันทึกโดยไม่ระบุมื้อค่ะ\n` +
+              `📖 พิมพ์ "วิธีใช้" เพื่อดูคู่มือครบถ้วน`;
+
+            await sendReplyMessageToLine(token, replyToken, foodGuideMsg);
+            continue;
+          }
+
           // วิเคราะห์ข้อมูลเงินจากข้อความ
           const parsed = await parseMessage(messageText);
 
           if (!parsed) {
             // หากส่งข้อความทั่วไปที่ไม่มีตัวเลขเงิน ไม่ต้องทำรายการบันทึก แต่อาจตอบคู่มือวิธีพิมพ์
             await sendReplyMessageToLine(token, replyToken,
-              `พิมพ์บันทึกรายจ่ายได้ง่ายๆ เช่น:\n` +
-              `• "อาหาร 80 ข้าวกะเพรา"\n` +
+              `📝 พิมพ์บันทึกรายจ่ายได้ง่ายๆ เช่น:\n` +
+              `• "อาหาร 80 ข้าวกะเพรา" (ไม่ระบุมื้อ)\n` +
+              `• "อาหาร 80 เช้า ข้าวกะเพรา" 🌅\n` +
+              `• "อาหารเย็น 350 สุกี้" 🌇\n` +
+              `• "กาแฟ 65 มื้อเช้า Truepay Next"\n` +
               `• "เดินทาง 45 รถไฟฟ้า"\n` +
-              `• "รายรับอื่นๆ 15000 เงินเดือน"`
+              `• "จ่ายค่าน้ำ 500 Truepay Next"\n` +
+              `• "รายรับอื่นๆ 15000 เงินเดือน"\n` +
+              `💡 พิมพ์ "ลงบัญชี" เพื่อดูคู่มือค่าอาหารพร้อมมื้ออาหาร\n` +
+              `📖 พิมพ์ "วิธีใช้" เพื่อดูคู่มือเพิ่มเติม`
             );
             continue;
           }
 
-          const { amount, category, description } = parsed;
+          const { amount, category, description, paymentMethod, creditCardName, mealType } = parsed;
           const transactionDate = new Date().toISOString().slice(0, 10); // วันนี้ YYYY-MM-DD
 
           // ตรวจสอบว่าเป็นรายการชาร์จไฟรถ EV หรือไม่
@@ -800,11 +996,15 @@ router.post('/webhook', async (req, res) => {
           try {
             await connection.beginTransaction();
 
+            // กำหนด credit_status ตามวิธีชำระเงิน
+            const creditStatus = paymentMethod === 'credit' ? 'unpaid' : 'none';
+            const finalCreditCardName = paymentMethod === 'credit' ? creditCardName : null;
+
             // 1. บันทึกลงตาราง transactions
             const [tResult] = await connection.query(
-              `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status) 
-               VALUES (?, ?, ?, ?, ?, ?, 'cash', 'none')`,
-              [user.id, amount, targetCategoryType, targetCategoryId, transactionDate, description]
+              `INSERT INTO transactions (user_id, amount, type, category_id, transaction_date, description, payment_method, credit_status, credit_card_name, meal_type) 
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [user.id, amount, targetCategoryType, targetCategoryId, transactionDate, description, paymentMethod, creditStatus, finalCreditCardName, mealType || null]
             );
             const transactionId = tResult.insertId;
 
@@ -831,10 +1031,23 @@ router.post('/webhook', async (req, res) => {
 
             // 3. ส่งข้อความยืนยันความสำเร็จ
             const typeLabel = targetCategoryType === 'income' ? 'รายรับ 💰' : 'รายจ่าย 💸';
+
+            // Label วิธีชำระเงิน
+            const payMethodLabel = paymentMethod === 'credit'
+              ? `💳 บัตรเครดิต${finalCreditCardName ? ` (${finalCreditCardName})` : ''}`
+              : paymentMethod === 'transfer'
+              ? '📲 โอนเงิน'
+              : '💵 เงินสด';
+
             let replyMsg = `✅ บันทึกสำเร็จแล้วค่ะ!\n`;
             replyMsg += `👤 ผู้บันทึก: ${user.display_name}\n`;
             replyMsg += `🏷️ หมวดหมู่: ${targetCategoryName}\n`;
+            if (mealType) {
+              const mealEmoji = mealType === 'เช้า' ? '🌅' : mealType === 'กลางวัน' ? '☀️' : mealType === 'เย็น' ? '🌇' : '🌙';
+              replyMsg += `${mealEmoji} มื้ออาหาร: มื้อ${mealType}\n`;
+            }
             replyMsg += `💵 ยอดเงิน: ${amount.toLocaleString('th-TH')} บาท (${typeLabel})\n`;
+            replyMsg += `💳 ชำระด้วย: ${payMethodLabel}\n`;
             
             if (isEVCharging && evDetails) {
               if (evDetails.station_name) replyMsg += `🔌 สถานี: ${evDetails.station_name}\n`;
