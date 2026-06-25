@@ -1226,6 +1226,24 @@ async function fetchEVStatistics() {
       document.getElementById('evAvgEfficiency').textContent = stats.totalDistance > 0 ? `${stats.kmPerKWh} km/kWh` : noComp;
       document.getElementById('evTotalDistance').textContent = stats.totalDistance > 0 ? `${stats.totalDistance.toLocaleString(lang === 'th' ? 'th-TH' : 'en-US')} km` : minRecords;
 
+      // อัปเดตตารางประวัติ EV
+      const tableBody = document.getElementById('evLogsTableBody');
+      if (tableBody) tableBody.innerHTML = '';
+
+      if (logs.length === 0) {
+        const noEvLogs = lang === 'th' ? 'ไม่มีข้อมูลประวัติการชาร์จรถไฟฟ้าเลยจ้า' : 'No EV charging history logs.';
+        if (tableBody) {
+          tableBody.innerHTML = `
+            <tr>
+              <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                ${noEvLogs}
+              </td>
+            </tr>
+          `;
+        }
+        return;
+      }
+
       // จัดการการแสดงผลปุ่มดูทั้งหมด
       const toggleContainer = document.getElementById('evLogsToggleContainer');
       const toggleBtn = document.getElementById('btnToggleEVLogsLimit');
