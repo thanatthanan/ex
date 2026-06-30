@@ -2259,7 +2259,7 @@ function triggerManualDailySummary() {
     const cancelBtn = modal.querySelector('button[onclick="closeConfirmSendLineModal()"]');
     const confirmBtn = modal.querySelector('button[onclick="executeSendLine()"]');
 
-    if (titleSpan) titleSpan.textContent = lang === 'th' ? 'ส่งข้อมูลไป LINE? 📤' : 'Send summary to LINE? 📤';
+    if (titleSpan) titleSpan.textContent = lang === 'th' ? 'ส่งข้อมูลไป LINE?' : 'Send summary to LINE?';
     if (descP) descP.textContent = lang === 'th'
       ? 'ส่งสรุปรายรับ-รายจ่ายของวันนี้ไปยังกลุ่ม LINE ของครอบครัวทันที'
       : 'Send today\'s income and expense summary to the family LINE group immediately.';
@@ -2391,7 +2391,7 @@ function renderBudgetList(type, items) {
       </div>
       <div class="budget-item-label" title="${escapeHtml(item.label)}">${escapeHtml(item.label)}</div>
       <div class="budget-item-amount ${type}-amt">${formatCurrencyCompact(item.amount)}</div>
-      <button class="budget-item-delete" onclick="editBudgetItem('${type}', ${index})" title="แก้ไขรายการนี้" style="margin-left: 6px; color: var(--income-color);">
+      <button class="budget-item-delete" onclick="editBudgetItem('${type}', ${index})" title="แก้ไขรายการนี้" style="margin-left: 6px; color: ${type === 'income' ? 'var(--income-color)' : 'var(--expense-color)'};">
         <i class="fa-solid fa-pen"></i>
       </button>
       <button class="budget-item-delete" onclick="deleteBudgetItem('${type}', ${index})" title="ลบรายการนี้">

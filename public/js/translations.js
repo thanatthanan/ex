@@ -107,7 +107,7 @@ const translations = {
     btn_scan_slip: "สแกนสลิปโอนเงินอัตโนมัติ 📸",
     ocr_loading: "กำลังวิเคราะห์ข้อมูลสลิป...",
     ocr_loading_hint: "โปรดรอสักครู่ (ระบบประมวลผลบนมือถือโดยตรง)",
-    send_summary_line: "ส่งสรุปเข้า LINE 📤",
+    send_summary_line: "ส่งสรุปเข้า LINE",
     // Change Password Modal
     modal_pw_title: "เปลี่ยนรหัสผ่านเข้าบ้าน 🔑",
     modal_pw_old: "รหัสผ่านเดิม",
@@ -280,7 +280,7 @@ const translations = {
     btn_scan_slip: "Scan Bank Slip (OCR) 📸",
     ocr_loading: "Analyzing bank slip...",
     ocr_loading_hint: "Please wait (processing directly on your device)",
-    send_summary_line: "Send Summary to LINE 📤",
+    send_summary_line: "Send Summary to LINE",
     // Change Password Modal
     modal_pw_title: "Change Password 🔑",
     modal_pw_old: "Current Password",
